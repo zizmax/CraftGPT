@@ -1,4 +1,3 @@
-[![CraftGPT](https://i.imgur.com/C0U7IwY.png)](https://www.spigotmc.org/resources/craftgpt.110635/)
 [![CraftGPT](https://i.imgur.com/DfY6PdI.png)](https://www.spigotmc.org/resources/craftgpt.110635/)
 
 **A new era for video games**
