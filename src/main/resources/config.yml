@@ -1,0 +1,155 @@
+
+#########################################################
+#        ____            __ _    ____ ____ _____        #
+#       / ___|_ __ __ _ / _| |_ / ___|  _ \_   _|       #
+#       | |   | '__/ _` | |_| __| |  _| |_) || |        #
+#       | |___| | | (_| |  _| |_| |_| |  __/ | |        #
+#       \____|_|  \__,_|_|  \__|\____|_|    |_|         #
+#                                                       #
+#  Join the Discord at: https://discord.gg/BXhUUQEymg   #
+#########################################################
+
+
+
+
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                  CRITICAL CONFIGURATION                                      | #
+# |                                                                                              | #
+# |                           - required for CraftGPT to work! -                                 | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+api_key: "API KEY HERE"
+
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                        Main settings                                         | #
+# |                                                                                              | #
+# |                                 Customize CraftGPT's core                                    | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+default-temperature: 1.0
+messages-cutoff: 8
+player-event-prefix: "your friend %s"
+passive-event-prefix: "" # Left blank on purpose!
+event-indicator: "[event]"
+chatting-radius: 30
+stream-responses: false
+
+
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                            Events                                            | #
+# |                                                                                              | #
+# |                        Customize how AI-mobs react to in-game events                         | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+events:
+  player-fish:
+    chance: 20
+    message: "just caught a %s with a fishing rod"
+  player-kill-friend:
+    chance: 20
+    message: "just killed you!"
+  player-kill-entity:
+    chance: 20
+    message: "just killed a %s"
+  player-breed-entity:
+    chance: 20
+    message: "bred two %ss and they just made a baby %s"
+  player-mount:
+    chance: 20
+    message: "just mounted a %s to ride it"
+  player-pickup-item:
+    chance: 20
+    message: "just picked up a %s"
+  player-resurrect:
+    chance: 20
+    message: "just resurrected from the dead"
+  player-tame-entity:
+    chance: 20
+    message: "just tamed a %s"
+  player-eat:
+    chance: 20
+    message: "just ate a %s"
+  player-hit-friend-projectile:
+    chance: 20
+    message: "just shot you with a %s"
+  player-hit-entity-projectile:
+    chance: 20
+    message: "just shot a %s with a %s"
+  player-damage-friend:
+    chance: 20
+    message: "just hit you with a %s"
+  player-damage-friend-fist:
+    chance: 20
+    message: "just hit you with their fist"
+  player-damage-entity:
+    chance: 20
+    message: "just hit a %s"
+  player-break-item:
+    chance: 20
+    message: "just broke their %s"
+  player-levelup:
+    chance: 20
+    message: "just went up in experience level"
+  player-leash-entity:
+    chance: 20
+    message: "just attached a leash to a %s"
+
+# Events where player is damaged by something
+  player-hurt-suffocation:
+    chance: 20
+    message: "just got hurt by suffocation"
+  player-hurt-lightning:
+    chance: 20
+    message: "just got hit by lightning and took damage"
+  player-hurt-lava:
+    chance: 20
+    message: "just got burned by lava and took damage"
+  player-hurt-fire:
+    chance: 20
+    message: "just got burned by fire and took damage"
+  player-hurt-fall:
+    chance: 20
+    message: "just got hurt in a fall"
+  player-hurt-entityexplosion:
+    chance: 20
+    message: "just got hurt by an explosion"
+
+# Events where AI-enabled mob damages something else
+  npc-damage-entity:
+    chance: 20
+    message: "you just hit a %s"
+  npc-kill-entity:
+    chance: 20
+    message: "you just killed a %s"
+
+# Events where AI-enabled mob is damaged by something
+  npc-hurt-entity:
+    chance: 20
+    message: "something just hit you and you took damage"
+  npc-hurt-entityexplosion:
+    chance: 20
+    message: "something just exploded near you and you took damage"
+  npc-hurt-fall:
+    chance: 20
+    message: "you just fell and took damage"
+  npc-hurt-fire:
+    chance: 20
+    message: "you just took damage from touching fire"
+  npc-hurt-lava:
+    chance: 20
+    message: "you just took damage from touching lava"
+  npc-hurt-projectile:
+    chance: 20
+    message: "you just took damage from a projectile"
+  npc-hurt-fire-tick:
+    chance: 20
+    message: "you just took damage from being on fire"
+  npc-hurt-drowning:
+    chance: 20
+    message: "you just took damage from drowning"

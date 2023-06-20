@@ -1,0 +1,11 @@
+name: CraftGPT
+version: '${project.version}'
+main: acute.ai.CraftGPT
+api-version: 1.19
+authors: [ zizmax ]
+description: AI mobs in Minecraft
+commands:
+  craftgpt:
+    description: CraftGPT root command
+    usage: <command> [subcommand]
+    aliases: [cg]
