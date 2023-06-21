@@ -28,7 +28,6 @@ public final class CraftGPT extends JavaPlugin {
 
     public boolean debug = false;
     public boolean apiKeySet = false;
-
     public OpenAiService openAIService;
 
     public static final Random random = new Random();
@@ -46,6 +45,8 @@ public final class CraftGPT extends JavaPlugin {
     HashMap<String, AIMob> craftGPTData = new HashMap<>();
 
     public static final String CHAT_PREFIX = ChatColor.GOLD + "[" + ChatColor.GRAY + "Craft" + ChatColor.GREEN + "GPT" + ChatColor.GOLD + "] " + ChatColor.GRAY;
+    public static final String DISCORD_URL = "https://discord.gg/TYcCv3zZvF";
+
 
     @Override
     public void onEnable() {
@@ -87,16 +88,7 @@ public final class CraftGPT extends JavaPlugin {
         int bStatsId = 18710;
         Metrics metrics = new Metrics(this, bStatsId);
 
-        String key = getConfig().getString("api_key");
-        if (key == null || key.length() < 15) {
-            getLogger().severe("No API key specified in config! Must set an API key for CraftGPT to work!");
-            return;
-        }
-        else {
-            apiKeySet = true;
-        }
-
-        openAIService = new OpenAiService(key);
+        enableOpenAI();
 
         getLogger().info("Enabled");
 
@@ -115,6 +107,20 @@ public final class CraftGPT extends JavaPlugin {
         getLogger().info("Writing save data...");
         writeData(this);
         getLogger().warning("Disabled");
+    }
+
+    public void enableOpenAI() {
+        String key = getConfig().getString("api_key");
+        if (key == null || key.length() < 15) {
+            getLogger().severe("No API key specified in config! Must set an API key for CraftGPT to work!");
+            return;
+        }
+        else {
+            apiKeySet = true;
+        }
+
+        openAIService = new OpenAiService(key);
+        getLogger().info("Connected to OpenAI!");
     }
 
     public void writeData(CraftGPT craftGPT) {

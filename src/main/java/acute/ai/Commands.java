@@ -1,5 +1,10 @@
 package acute.ai;
 
+import net.md_5.bungee.api.chat.BaseComponent;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -32,18 +37,79 @@ public class Commands implements TabExecutor {
         }
         return null;
     }
+
+    public void helpCommand(CommandSender sender) {
+        if (!sender.hasPermission("craftgpt.help")) {
+            sayNoPermission(sender);
+        } else {
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.YELLOW + "==========| " + ChatColor.GRAY + "CraftGPT Help" +
+                    ChatColor.YELLOW + " |==========");
+            String messageStr = CraftGPT.CHAT_PREFIX + "Join the Discord ";
+            if (sender instanceof Player) {
+                TextComponent link = new TextComponent("here");
+                link.setUnderlined(true);
+                link.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,
+                        craftGPT.DISCORD_URL));
+                link.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(ChatColor.GOLD + "discord.com")));
+                BaseComponent message = new TextComponent(TextComponent.fromLegacyText(messageStr));
+                message.addExtra(link);
+                sender.spigot().sendMessage(message);
+            }
+            else {
+                sender.sendMessage(messageStr + "at " + craftGPT.DISCORD_URL);
+            }
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg wand" + ChatColor.GRAY + " Get a magic wand");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg stop" + ChatColor.GRAY + " Exit chat mode");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg reload" + ChatColor.GRAY + " Reload config.yml and plugin data");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg create" + ChatColor.GRAY + " Enable AI for selected mob");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg remove" + ChatColor.GRAY + " Remove AI for selected mob");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg clear" + ChatColor.GRAY + " Clear mob-builder settings");
+
+        }
+    }
+
+    public void reloadCommand(CommandSender sender) {
+        if (!sender.hasPermission("craftgpt.reload")) {
+            sayNoPermission(sender);
+        } else {
+            craftGPT.saveDefaultConfig();
+            craftGPT.reloadConfig();
+            craftGPT.writeData(craftGPT);
+            craftGPT.readData(craftGPT);
+            craftGPT.enableOpenAI();
+            sender.sendMessage(craftGPT.CHAT_PREFIX + "Config and data reloaded!");
+        }
+    }
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!craftGPT.apiKeySet) {
-            sender.sendMessage(craftGPT.CHAT_PREFIX + "CraftGPT requires an OpenAI API key set in the config!");
-        }
-        else {
-            CraftGPTListener craftGPTListener = new CraftGPTListener(craftGPT);
-            if (command.getName().equalsIgnoreCase("craftgpt") || command.getName().equalsIgnoreCase("cg")) {
+        CraftGPTListener craftGPTListener = new CraftGPTListener(craftGPT);
+        if (command.getName().equalsIgnoreCase("craftgpt") || command.getName().equalsIgnoreCase("cg")) {
+
+            // Commands that can be run with no API key
+            if (!craftGPT.apiKeySet) {
+                if (args.length > 0) {
+                    if (args[0].equals("help")) {
+                        helpCommand(sender);
+                    } else if (args[0].equals("reload")) {
+                        reloadCommand(sender);
+                    } else {
+                        sender.sendMessage(craftGPT.CHAT_PREFIX + "Malformed command or must run command as player!");
+                    }
+                } else {
+                        sender.sendMessage(craftGPT.CHAT_PREFIX + "CraftGPT requires an OpenAI API key set in the config!");
+                    }
+            }
+
+            // Commands that require an API key
+            else {
                 if (sender instanceof Player) {
                     Player player = (Player) sender;
                     if (args.length > 0) {
-                        if (args[0].equals("displayname")) {
+                        if (args[0].equals("help")) {
+                            helpCommand(sender);
+                        } else if (args[0].equals("reload")) {
+                            reloadCommand(sender);
+                        } else if (args[0].equals("displayname")) {
                             if (args.length > 1) {
                                 String name = "";
                                 for (int i = 1; i < args.length - 1; i++) {
@@ -62,12 +128,12 @@ public class Commands implements TabExecutor {
                             } else {
                                 player.sendMessage(craftGPT.CHAT_PREFIX + "Coming soon.");
                             }
-                        /*
-                        for (int i = 1; i < 21; i++) {
-                            player.performCommand("npc select " + i);
-                            player.performCommand("npc look");
-                        }
-                         */
+                            /*
+                            for (int i = 1; i < 21; i++) {
+                                player.performCommand("npc select " + i);
+                                player.performCommand("npc look");
+                            }
+                             */
                         } else if (args[0].equals("save")) {
                             if (!player.hasPermission("craftgpt.save")) {
                                 sayNoPermission(player);
@@ -88,15 +154,6 @@ public class Commands implements TabExecutor {
                                 wandMeta.setLore(wandLore);
                                 wand.setItemMeta(wandMeta);
                                 player.getInventory().addItem(wand);
-                            }
-                        } else if (args[0].equals("help")) {
-                            if (!player.hasPermission("craftgpt.help")) {
-                                sayNoPermission(player);
-                            } else {
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.YELLOW + "==========| " + ChatColor.GRAY + "CraftGPT Help" +
-                                        ChatColor.YELLOW + " |==========");
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg wand" + ChatColor.GRAY + " Get a magic wand");
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg stop" + ChatColor.GRAY + " Exit chat mode");
                             }
                         } else if (args[0].equals("stop")) {
                             if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
@@ -326,18 +383,9 @@ public class Commands implements TabExecutor {
                                     player.sendMessage(craftGPT.CHAT_PREFIX + "No mob selected!");
                                 }
                             }
-                        } else if (args[0].equals("reload")) {
-                            if (!player.hasPermission("craftgpt.reload")) {
-                                sayNoPermission(player);
-                            } else {
-                                craftGPT.saveDefaultConfig();
-                                craftGPT.reloadConfig();
-                                craftGPT.writeData(craftGPT);
-                                craftGPT.readData(craftGPT);
-                                player.sendMessage(craftGPT.CHAT_PREFIX + "Config and data reloaded!");
-                            }
-                        } else
+                        } else {
                             player.sendMessage(CraftGPT.CHAT_PREFIX + "Malformed command! Try " + ChatColor.RED + "/cg help");
+                        }
                     } else {
                         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.YELLOW + "====| " + ChatColor.GRAY + "ChatGPT v" +
                                 craftGPT.getDescription().getVersion() + ChatColor.YELLOW + " |====");
@@ -348,10 +396,11 @@ public class Commands implements TabExecutor {
                 }
             }
         }
+
         return true;
     }
 
-    private void sayNoPermission(Player player){
-        player.sendMessage(CraftGPT.CHAT_PREFIX + "You do not have permission to do that!");
+    private void sayNoPermission(CommandSender sender){
+        sender.sendMessage(CraftGPT.CHAT_PREFIX + "You do not have permission to do that!");
     }
 }
