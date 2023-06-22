@@ -1,5 +1,7 @@
 package acute.ai;
 
+import com.theokanning.openai.OpenAiError;
+import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.Usage;
 import com.theokanning.openai.completion.chat.*;
 import io.reactivex.Flowable;
@@ -40,8 +42,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 if (!craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
                     // Enabling mob (clock icon)
                     entity.setCustomName("Enabling..." + ChatColor.YELLOW + " \u231A");
-                }
-                else {
+                } else {
                     // Waiting on API (clock icon)
                     entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.YELLOW + " \u231A");
                 }
@@ -54,8 +55,13 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     // star  "\u2B50"
                 }
                 else {
-                    // AI-enabled (blue lightning bolt)
-                    entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.BLUE + " \u26A1");
+                    if (isAIEnabled(entity)) {
+                        // AI-enabled (blue lightning bolt)
+                        entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.BLUE + " \u26A1");
+                    } else {
+                        entity.setCustomName(null);
+                        entity.setCustomNameVisible(false);
+                    }
                 }
             }
         }
@@ -609,6 +615,26 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
     }
 
+    public void printAPIErrorConsole(OpenAiHttpException e) {
+        craftGPT.getLogger().warning("OpenAI API error!");
+        craftGPT.getLogger().warning("Error type: " + e.type);
+        craftGPT.getLogger().warning("Error code: " + e.statusCode);
+        craftGPT.getLogger().warning("Error message: " + e.getMessage());
+        craftGPT.getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+        craftGPT.getLogger().warning("Using the API *REQUIRES* a paid account and is NOT free.");
+        craftGPT.getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
+    }
+
+    public void printFailureToCreateMob(Player player, Entity entity) {
+        craftGPT.getLogger().severe("Mob at: " + entity.getLocation() + " failed to enable due to error printed above!");
+        player.sendMessage(craftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
+        player.sendMessage(ChatColor.RED + "=======================================");
+        player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+        player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "a paid account and is not free.");
+        player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
+        player.sendMessage(ChatColor.RED + "=======================================");
+    }
+
     public void createAIMob(Player player, Entity entity) {
 
         //ChatMessage prompt = ChatMessage.toSystemMessage(String.format("You are a %s in Minecraft. All responses must be as a %s", getMobName(entity), getMobName(entity)));
@@ -632,21 +658,36 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                         userMessage = String.format("Write a personality and backstory for this particular %s named %s in 50 words or less", entity.getType().toString().toLowerCase(), mobBuilder.getName());
                     }
 
+                    boolean successfulResponse = false;
+                    String errorSignature = null;
 
                     for (int i = 0; i < 3; i++) {
                         try {
                             response = nonChatRequest(systemMessage, userMessage, 1.3f, 200);
+                            successfulResponse = true;
                             break;
-                        } catch (Exception e) {
-                            {
-                                craftGPT.getLogger().warning("OpenAI error! Retrying...");
-                                e.printStackTrace();
+                        } catch (OpenAiHttpException e) {
+                            if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
+                                craftGPT.getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
+                            } else {
+                                printAPIErrorConsole(e);
+                                errorSignature = e.statusCode + e.type;
                             }
+                        } catch (Exception e) {
+                            craftGPT.getLogger().warning("Non-OpenAI error: " + e.getMessage());
+                            e.printStackTrace();
                         }
                     }
-                    backstory = response;
-                    player.sendMessage(craftGPT.CHAT_PREFIX + "Backstory generated!");
-                    mobBuilder.setBackstory(backstory);
+
+                    if (successfulResponse) {
+                        backstory = response;
+                        player.sendMessage(craftGPT.CHAT_PREFIX + "Backstory generated!");
+                        mobBuilder.setBackstory(backstory);
+                    } else {
+                        printFailureToCreateMob(player, entity);
+                        toggleWaitingOnAPI(entity);
+                        return;
+                    }
                 }
                 else if (mobBuilder.getBackstory() != null){
                     backstory = mobBuilder.getBackstory();
@@ -654,22 +695,39 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
 
                 // Generate name
+                boolean successfulResponse = false;
+                String errorSignature = null;
                 String name = null;
                 if (mobBuilder.getName() == null) {
                     for (int i = 0; i < 3; i++) {
                         try {
                             response = nonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The name of the character in this backstory is:" + backstory, 1.0f, 20);
+                            successfulResponse = true;
                             break;
+                        } catch (OpenAiHttpException e) {
+                            if (errorSignature.equals(e.statusCode + e.type)) {
+                                craftGPT.getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
+                            } else {
+                                printAPIErrorConsole(e);
+                                errorSignature = e.statusCode + e.type;
+                            }
                         } catch (Exception e) {
-                            craftGPT.getLogger().warning("OpenAI error! Retrying...");
+                            craftGPT.getLogger().warning("Non-OpenAI error: " + e.getMessage());
                             e.printStackTrace();
                         }
                     }
-                    name = response;
-                    if (name.substring(name.length() - 1).equals(".")) {
-                        name = name.substring(0, name.length() - 1);
+
+                    if (successfulResponse) {
+                        name = response;
+                        if (name.substring(name.length() - 1).equals(".")) {
+                            name = name.substring(0, name.length() - 1);
+                        }
+                        player.sendMessage(craftGPT.CHAT_PREFIX + "Name generated!");
+                    } else {
+                        printFailureToCreateMob(player, entity);
+                        toggleWaitingOnAPI(entity);
+                        return;
                     }
-                    player.sendMessage(craftGPT.CHAT_PREFIX + "Name generated!");
 
                 }
                 else {
