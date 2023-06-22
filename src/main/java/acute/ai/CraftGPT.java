@@ -46,6 +46,12 @@ public final class CraftGPT extends JavaPlugin {
 
     public static final String CHAT_PREFIX = ChatColor.GOLD + "[" + ChatColor.GRAY + "Craft" + ChatColor.GREEN + "GPT" + ChatColor.GOLD + "] " + ChatColor.GRAY;
     public static final String DISCORD_URL = "https://discord.gg/TYcCv3zZvF";
+    public static final String SPIGOT_URL = "https://www.spigotmc.org/resources/craftgpt.110635/";
+    public static final String UPDATE_AVAILABLE = "Update available! Download v%s ";
+    public static final String UP_TO_DATE = "AcuteLoot is up to date: (%s)";
+    public static final String UNRELEASED_VERSION = "Version (%s) is more recent than the one publicly available. Dev build?";
+    public static final String UPDATE_CHECK_FAILED = "Could not check for updates. Reason: ";
+    public static final int spigotID = 110635;
 
 
     @Override
@@ -89,6 +95,25 @@ public final class CraftGPT extends JavaPlugin {
         Metrics metrics = new Metrics(this, bStatsId);
 
         enableOpenAI();
+
+        // Check for updates
+        UpdateChecker.init(this, spigotID).requestUpdateCheck().whenComplete((result, exception) -> {
+            if (result.requiresUpdate()) {
+                this.getLogger().warning((String.format(
+                        UPDATE_AVAILABLE, result.getNewestVersion()) + "at " + SPIGOT_URL));
+                return;
+            }
+
+            UpdateChecker.UpdateReason reason = result.getReason();
+            if (reason == UpdateChecker.UpdateReason.UP_TO_DATE) {
+                this.getLogger().info(String.format(UP_TO_DATE, result.getNewestVersion()));
+            } else if (reason == UpdateChecker.UpdateReason.UNRELEASED_VERSION) {
+                this.getLogger().info(String.format(UNRELEASED_VERSION, result.getNewestVersion()));
+            } else {
+                this.getLogger().warning(UPDATE_CHECK_FAILED + reason);
+            }
+        });
+
 
         getLogger().info("Enabled");
 

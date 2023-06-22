@@ -9,6 +9,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -77,16 +78,51 @@ public class Commands implements TabExecutor {
             craftGPT.writeData(craftGPT);
             craftGPT.readData(craftGPT);
             craftGPT.enableOpenAI();
-            sender.sendMessage(craftGPT.CHAT_PREFIX + "Config and data reloaded!");
+
+            // Check for updates
+            UpdateChecker.init(craftGPT, craftGPT.spigotID).requestUpdateCheck().whenComplete((result, exception) -> {
+                if (result.requiresUpdate()) {
+                    sendUpdateMessage(sender, result);
+                    return;
+                }
+
+                UpdateChecker.UpdateReason reason = result.getReason();
+                if (reason == UpdateChecker.UpdateReason.UP_TO_DATE) {
+                    sender.sendMessage(String.format(CraftGPT.CHAT_PREFIX + CraftGPT.UP_TO_DATE, result.getNewestVersion()));
+                } else if (reason == UpdateChecker.UpdateReason.UNRELEASED_VERSION) {
+                    sender.sendMessage(String.format(CraftGPT.CHAT_PREFIX + CraftGPT.UNRELEASED_VERSION, result.getNewestVersion()));
+                } else {
+                    sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + CraftGPT.UPDATE_CHECK_FAILED + ChatColor.WHITE + reason);
+                }
+            });
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + "Config reloaded successfully");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + "Checking for updates...");
+
+
+
+
         }
     }
+
+    public void sendUpdateMessage(CommandSender sender, UpdateChecker.UpdateResult result) {
+        String messageStr = String.format(CraftGPT.CHAT_PREFIX + ChatColor.RED + CraftGPT.UPDATE_AVAILABLE, result.getNewestVersion());
+        TextComponent link = new TextComponent("here");
+        link.setUnderlined(true);
+        link.setClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,
+                CraftGPT.SPIGOT_URL));
+        link.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(ChatColor.GOLD + "SpigotMC.org")));
+        BaseComponent message = new TextComponent(TextComponent.fromLegacyText(messageStr));
+        message.addExtra(link);
+        sender.spigot().sendMessage(message);
+    }
+
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         CraftGPTListener craftGPTListener = new CraftGPTListener(craftGPT);
         if (command.getName().equalsIgnoreCase("craftgpt") || command.getName().equalsIgnoreCase("cg")) {
 
             // Commands that can be run with no API key
-            if (!craftGPT.apiKeySet) {
+            if (!craftGPT.apiKeySet || sender instanceof ConsoleCommandSender) {
                 if (args.length > 0) {
                     if (args[0].equals("help")) {
                         helpCommand(sender);
