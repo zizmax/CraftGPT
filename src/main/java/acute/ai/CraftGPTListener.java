@@ -1,6 +1,5 @@
 package acute.ai;
 
-import com.theokanning.openai.OpenAiError;
 import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.Usage;
 import com.theokanning.openai.completion.chat.*;
@@ -1015,7 +1014,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
             int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
             Entity mob = craftGPT.chattingMobs.get(player.getUniqueId());
-            if (player.getLocation().distance(mob.getLocation()) < chattingRadius) {
+            if (player.getWorld().equals(mob.getWorld()) && player.getLocation().distance(mob.getLocation()) < chattingRadius) {
                 if (isWaitingOnAPI(mob)) {
                     event.setCancelled(true);
                     player.sendMessage(craftGPT.CHAT_PREFIX + "You can only send one message at a time!");
@@ -1023,7 +1022,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
                 Set<Player> newRecipients = new HashSet<Player>();
                 for (Player recipient : event.getRecipients()) {
-                    if (recipient.getLocation().distance(player.getLocation()) < chattingRadius) {
+                    if (recipient.getWorld().equals(player.getWorld()) && recipient.getLocation().distance(player.getLocation()) < chattingRadius) {
                         newRecipients.add(recipient);
                     }
                 }
