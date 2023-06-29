@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CraftGPTListener implements org.bukkit.event.Listener {
 
-    private final CraftGPT craftGPT;
+    private static CraftGPT craftGPT;
 
     private final Random random = CraftGPT.random;
 
@@ -436,14 +436,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
 
-    public String nonChatRequest(String systemMessage, String userMessage, float temp, int max_tokens) {
+    public static String nonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage));
         chatMessages.add(new ChatMessage(ChatMessageRole.USER.value(), userMessage));
         ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                 .messages(chatMessages)
                 .temperature((double) temp)
-                .maxTokens(max_tokens)
+                .maxTokens(maxTokens)
                 .model("gpt-3.5-turbo")
                 .build();
         return craftGPT.openAIService.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
@@ -614,7 +614,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
     }
 
-    public void printAPIErrorConsole(OpenAiHttpException e) {
+    public static void printAPIErrorConsole(OpenAiHttpException e) {
         craftGPT.getLogger().warning("OpenAI API error!");
         craftGPT.getLogger().warning("Error type: " + e.type);
         craftGPT.getLogger().warning("Error code: " + e.statusCode);
@@ -632,6 +632,29 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "a paid account and is not free.");
         player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
         player.sendMessage(ChatColor.RED + "=======================================");
+    }
+
+    public static String tryNonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
+        String errorSignature = null;
+        String response;
+
+        for (int i = 0; i < 3; i++) {
+            try {
+                response = nonChatRequest(systemMessage, userMessage, temp, maxTokens);
+                return response;
+            } catch (OpenAiHttpException e) {
+                if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
+                    craftGPT.getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
+                } else {
+                    printAPIErrorConsole(e);
+                    errorSignature = e.statusCode + e.type;
+                }
+            } catch (Exception e) {
+                craftGPT.getLogger().warning("Non-OpenAI error: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
     public void createAIMob(Player player, Entity entity) {
@@ -657,35 +680,16 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                         userMessage = String.format("Write a personality and backstory for this particular %s named %s in 50 words or less", entity.getType().toString().toLowerCase(), mobBuilder.getName());
                     }
 
-                    boolean successfulResponse = false;
-                    String errorSignature = null;
+                    response = tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
 
-                    for (int i = 0; i < 3; i++) {
-                        try {
-                            response = nonChatRequest(systemMessage, userMessage, 1.3f, 200);
-                            successfulResponse = true;
-                            break;
-                        } catch (OpenAiHttpException e) {
-                            if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
-                                craftGPT.getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
-                            } else {
-                                printAPIErrorConsole(e);
-                                errorSignature = e.statusCode + e.type;
-                            }
-                        } catch (Exception e) {
-                            craftGPT.getLogger().warning("Non-OpenAI error: " + e.getMessage());
-                            e.printStackTrace();
-                        }
-                    }
-
-                    if (successfulResponse) {
-                        backstory = response;
-                        player.sendMessage(craftGPT.CHAT_PREFIX + "Backstory generated!");
-                        mobBuilder.setBackstory(backstory);
-                    } else {
+                    if (response == null) {
                         printFailureToCreateMob(player, entity);
                         toggleWaitingOnAPI(entity);
                         return;
+                    } else {
+                        backstory = response;
+                        player.sendMessage(craftGPT.CHAT_PREFIX + "Backstory generated!");
+                        mobBuilder.setBackstory(backstory);
                     }
                 }
                 else if (mobBuilder.getBackstory() != null){
@@ -694,38 +698,20 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
 
                 // Generate name
-                boolean successfulResponse = false;
-                String errorSignature = null;
-                String name = null;
+                String name;
                 if (mobBuilder.getName() == null) {
-                    for (int i = 0; i < 3; i++) {
-                        try {
-                            response = nonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The name of the character in this backstory is:" + backstory, 1.0f, 20);
-                            successfulResponse = true;
-                            break;
-                        } catch (OpenAiHttpException e) {
-                            if (errorSignature.equals(e.statusCode + e.type)) {
-                                craftGPT.getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
-                            } else {
-                                printAPIErrorConsole(e);
-                                errorSignature = e.statusCode + e.type;
-                            }
-                        } catch (Exception e) {
-                            craftGPT.getLogger().warning("Non-OpenAI error: " + e.getMessage());
-                            e.printStackTrace();
-                        }
-                    }
 
-                    if (successfulResponse) {
-                        name = response;
+                    name = tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
+
+                    if (name == null) {
+                        printFailureToCreateMob(player, entity);
+                        toggleWaitingOnAPI(entity);
+                        return;
+                    } else {
                         if (name.substring(name.length() - 1).equals(".")) {
                             name = name.substring(0, name.length() - 1);
                         }
                         player.sendMessage(craftGPT.CHAT_PREFIX + "Name generated!");
-                    } else {
-                        printFailureToCreateMob(player, entity);
-                        toggleWaitingOnAPI(entity);
-                        return;
                     }
 
                 }

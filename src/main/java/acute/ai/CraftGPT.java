@@ -10,6 +10,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Entity;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -28,6 +29,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public boolean debug = false;
     public boolean apiKeySet = false;
+    public boolean apiConnected = false;
     public OpenAiService openAIService;
 
     public static final Random random = new Random();
@@ -48,7 +50,7 @@ public final class CraftGPT extends JavaPlugin {
     public static final String DISCORD_URL = "https://discord.gg/TYcCv3zZvF";
     public static final String SPIGOT_URL = "https://www.spigotmc.org/resources/craftgpt.110635/";
     public static final String UPDATE_AVAILABLE = "Update available! Download v%s ";
-    public static final String UP_TO_DATE = "AcuteLoot is up to date: (%s)";
+    public static final String UP_TO_DATE = "CraftGPT is up to date: (%s)";
     public static final String UNRELEASED_VERSION = "Version (%s) is more recent than the one publicly available. Dev build?";
     public static final String UPDATE_CHECK_FAILED = "Could not check for updates. Reason: ";
     public static final int spigotID = 110635;
@@ -145,7 +147,29 @@ public final class CraftGPT extends JavaPlugin {
         }
 
         openAIService = new OpenAiService(key);
-        getLogger().info("Connected to OpenAI!");
+
+        getLogger().info("Connecting to OpenAI...");
+        long start = System.currentTimeMillis();
+
+
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                String response = CraftGPTListener.tryNonChatRequest("Say hi", "Hi!", .1f, 2);
+                if (response == null) {
+                    getLogger().severe("Tried 3 times and couldn't connect to OpenAI for the error(s) printed above!");
+                    getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
+
+                } else {
+                    long end = System.currentTimeMillis();
+                    getLogger().info("Connected to OpenAI!" + " (" +  ((end-start) / 1000f) + "s)");
+                    apiConnected = true;
+                }
+
+            }
+        }.runTask(this);
+
+
     }
 
     public void writeData(CraftGPT craftGPT) {

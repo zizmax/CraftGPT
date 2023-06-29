@@ -9,3 +9,7 @@ commands:
     description: CraftGPT root command
     usage: <command> [subcommand]
     aliases: [cg]
+
+permissions:
+  craftgpt.*:
+    description:

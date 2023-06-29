@@ -121,6 +121,10 @@ public class Commands implements TabExecutor {
         CraftGPTListener craftGPTListener = new CraftGPTListener(craftGPT);
         if (command.getName().equalsIgnoreCase("craftgpt") || command.getName().equalsIgnoreCase("cg")) {
 
+            if(!craftGPT.apiConnected) {
+                sender.sendMessage(craftGPT.CHAT_PREFIX + "WARNING: CraftGPT is not connected to OpenAI! Most features of the plugin will not work! See console logs for error details.");
+            }
+
             // Commands that can be run with no API key
             if (!craftGPT.apiKeySet || sender instanceof ConsoleCommandSender) {
                 if (args.length > 0) {
