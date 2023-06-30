@@ -5,7 +5,7 @@
 
 CraftGPT adds [OpenAI's ChatGPT](https://chat.openai.com/) to Minecraft, enabling you to turn any mob into a sentient creature with a personality and infinite dialogue.
 
-> [![Discord](https://i.imgur.com/2nu7We9.png)](https://discord.gg/TYcCv3zZvF) Join our [Discord](https://discord.gg/TYcCv3zZvF)!
+> [![Discord](https://i.imgur.com/2nu7We9.png)](https://discord.gg/BXhUUQEymg) Join our [Discord](https://discord.gg/BXhUUQEymg)!
 
 
 
