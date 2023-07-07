@@ -413,12 +413,12 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             }
                             handleMessageResponse(true, subject + " " + eventMessage, entity, player);
                             if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(craftGPT.CHAT_PREFIX + ChatColor.GREEN + name));
+                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + name));
                             }
                         } else {
                             if (craftGPT.debug) craftGPT.getLogger().info("Suppressed [" + eventMessage + "]");
                             if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(craftGPT.CHAT_PREFIX + ChatColor.YELLOW +  "SUPPRESSED: " + name));
+                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.YELLOW +  "SUPPRESSED: " + name));
 
                             }
                         }
@@ -427,7 +427,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             }
             else {
                 if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
-                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(craftGPT.CHAT_PREFIX + ChatColor.RED + "FAILED (" + roll + "): " + name));
+                    player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.RED + "FAILED (" + roll + "): " + name));
                 }
             }
             if (craftGPT.debug) craftGPT.getLogger().info(String.format("[%s]: %s | %s", player.getDisplayName(), name, eventMessage));
@@ -500,7 +500,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             if (player.getInventory().getItemInMainHand().hasItemMeta() && player.getInventory().getItemInMainHand().getItemMeta().getPersistentDataContainer().has(craftGPT.magicWandKey, PersistentDataType.STRING)) {
                 event.setCancelled(true);
                 if (player.isSneaking()) {
-                    player.sendMessage(craftGPT.CHAT_PREFIX + "Can't use magic wand while sneaking!");
+                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Can't use magic wand while sneaking!");
                     event.setCancelled(true);
                     return;
                 }
@@ -528,7 +528,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                     //fixme Assumes 1:1 mapping, will need to change for 1:many chats
                                 }
                             }
-                            player.sendMessage(craftGPT.CHAT_PREFIX + "Mob is already chatting with " + chattingPlayerName + "!");
+                            player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is already chatting with " + chattingPlayerName + "!");
                         }
                     }
 
@@ -626,7 +626,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public void printFailureToCreateMob(Player player, Entity entity) {
         craftGPT.getLogger().severe("Mob at: " + entity.getLocation() + " failed to enable due to error printed above!");
-        player.sendMessage(craftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
+        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
         player.sendMessage(ChatColor.RED + "=======================================");
         player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
         player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "a paid account and is not free.");
@@ -688,7 +688,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                         return;
                     } else {
                         backstory = response;
-                        player.sendMessage(craftGPT.CHAT_PREFIX + "Backstory generated!");
+                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Backstory generated!");
                         mobBuilder.setBackstory(backstory);
                     }
                 }
@@ -711,7 +711,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                         if (name.substring(name.length() - 1).equals(".")) {
                             name = name.substring(0, name.length() - 1);
                         }
-                        player.sendMessage(craftGPT.CHAT_PREFIX + "Name generated!");
+                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Name generated!");
                     }
 
                 }
@@ -749,14 +749,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 messages.add(prompt);
                 createAIMobData(entity.getUniqueId().toString(), name, temperature, messages, mobBuilder.isDefaultPrompt(), mobBuilder.getEntityType(), backstory);
                 toggleWaitingOnAPI(entity);
-                player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
-                player.sendMessage(craftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
+                player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
+                player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
                 entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
                 entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
                 craftGPT.getLogger().info(player.getDisplayName() + " enabled AI for " + mobBuilder.getEntityType() + " named " + name + " at " + entity.getLocation());
             }
         });
-        player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "Enabling AI for %s...", getMobName(entity)));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Enabling AI for %s...", getMobName(entity)));
         toggleWaitingOnAPI(entity);
     }
 
@@ -764,7 +764,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void removeAIMob(Player player, Entity entity) {
         // Disable AI for clicked mob
         if (craftGPT.chattingMobs.containsValue(entity)) exitChat(player);
-        player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "Disabled AI for %s", getMobName(entity)));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Disabled AI for %s", getMobName(entity)));
         if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
             entity.setCustomName("");
             entity.setCustomNameVisible(false);
@@ -774,29 +774,52 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void enterChat(Player player, Entity entity) {
+        if (craftGPT.getUsageFile().getInt("global-total-usage") > craftGPT.getConfig().getInt("global-usage-limit")) {
+            player.sendMessage(CraftGPT.CHAT_PREFIX + "Server has reached global chat usage limit!");
+            return;
+        }
+        if (craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) {
+            player.sendMessage(CraftGPT.CHAT_PREFIX + "You have reached your usage limit!");
+            return;
+        }
         craftGPT.chattingMobs.put(player.getUniqueId(), entity);
         renameMob(entity);
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
-        player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "Started chatting with %s!", aiMob.getName()));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Started chatting with %s!", aiMob.getName()));
         if (aiMob.isDefaultPrompt()) {
             List<ChatMessage> messages = aiMob.getMessages();
             messages.set(0, generatePrompt(player.getDisplayName(), aiMob));
             aiMob.setMessages(messages);
         }
+
+        // Write usage data
+        if (!craftGPT.getUsageFile().isSet("players")) craftGPT.getUsageFile().createSection("players");
+        String path = "players." + player.getUniqueId();
+        if (!craftGPT.getUsageFile().isSet(path)) craftGPT.getUsageFile().createSection(path);
+        craftGPT.getUsageFile().set(path + ".name", player.getName());
+        if (!craftGPT.getUsageFile().isSet(path + ".total-usage")) {
+            craftGPT.getUsageFile().set(path + ".total-usage", 0);
+        }
+        craftGPT.saveUsageFile();
+
     }
 
     public void exitChat(Player player) {
-        player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "Stopped chatting with %s!", craftGPT.craftGPTData.get(craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId().toString()).getName()));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s!", craftGPT.craftGPTData.get(craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId().toString()).getName()));
         Entity entity = craftGPT.chattingMobs.get(player.getUniqueId());
         craftGPT.chattingMobs.remove(player.getUniqueId());
         renameMob(entity);
+        craftGPT.saveUsageFile();
+
     }
 
     public void exitChat(Player player, String reason) {
-        player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "Stopped chatting with %s %s", craftGPT.craftGPTData.get(craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId().toString()).getName(), reason));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s %s", craftGPT.craftGPTData.get(craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId().toString()).getName(), reason));
         Entity entity = craftGPT.chattingMobs.get(player.getUniqueId());
         craftGPT.chattingMobs.remove(player.getUniqueId());
         renameMob(entity);
+        craftGPT.saveUsageFile();
+
     }
 
     public void enterSelecting(Player player, Entity entity) {
@@ -812,7 +835,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             mobName = getMobName(entity);
         }
         entity.setGlowing(true);
-        player.sendMessage(String.format(craftGPT.CHAT_PREFIX + "Selected %s", mobName));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Selected %s", mobName));
         Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
             @Override
             public void run() {
@@ -881,19 +904,26 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             toggleWaitingOnAPI(entity);
                         }
                         if (craftGPT.debug) craftGPT.getLogger().info("NOT STREAMED: " + chatMessageResponse.getContent());
+
+
                         Usage usage = chatCompletions.getUsage();
 
-                        // Usage stuff
-                        /*
                         if (usage != null) {
-                            System.out.printf("Usage: number of prompt token is %d, "
-                                            + "number of completion token is %d, and number of total tokens in request and response is %d.%n",
-                                    usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
+                            String path = "players." + player.getUniqueId() + ".total-usage";
+                            if (craftGPT.debug) {
+                                craftGPT.getLogger().info("getInt: " + craftGPT.getUsageFile().getInt(path));
+                                craftGPT.getLogger().info("getTotalTokens:- " + usage.getTotalTokens());
+                                craftGPT.getLogger().info("Sum: " + (craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens()));
+                            }
+
+                            craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getInt("global-total-usage") + usage.getTotalTokens());
+                            craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens());
+
+
                         }
                         else {
-                            craftGPT.getLogger().info("NO USAGE, NOT STREAMED");
+                            if (craftGPT.debug) craftGPT.getLogger().info("NO USAGE, NOT STREAMED");
                         }
-                         */
                     }
                 });
             }
@@ -994,6 +1024,27 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
+    public static int getTokenLimit(Player player) {
+        int limit;
+        if (player.hasPermission("usage-limit.low")) {
+            limit = craftGPT.getConfig().getInt("usage-limit.low.max");
+        }
+        else if (player.hasPermission("usage-limit.medium")) {
+            limit = craftGPT.getConfig().getInt("usage-limit.medium.max");
+        }
+        else if (player.hasPermission("usage-limit.high")) {
+            limit = craftGPT.getConfig().getInt("usage-limit.high.max");
+        }
+        else {
+            limit = craftGPT.getConfig().getInt("default-usage-limit");
+        }
+        if (craftGPT.debug) {
+            craftGPT.getLogger().info("Limit: " + limit);
+            craftGPT.getLogger().info("Total usage: " + craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage"));
+        }
+        return limit;
+    }
+
     @EventHandler
     public void onAsyncPlayerChatEvent (AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
@@ -1003,9 +1054,24 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             if (player.getWorld().equals(mob.getWorld()) && player.getLocation().distance(mob.getLocation()) < chattingRadius) {
                 if (isWaitingOnAPI(mob)) {
                     event.setCancelled(true);
-                    player.sendMessage(craftGPT.CHAT_PREFIX + "You can only send one message at a time!");
+                    player.sendMessage(CraftGPT.CHAT_PREFIX + "You can only send one message at a time!");
                     return;
                 }
+
+                if (craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) {
+                    event.setCancelled(true);
+                    player.sendMessage(CraftGPT.CHAT_PREFIX + "You have reached your usage limit!");
+                    exitChat(player);
+                    return;
+                }
+
+                if (craftGPT.getUsageFile().getInt("global-total-usage") > craftGPT.getConfig().getInt("global-usage-limit")) {
+                    event.setCancelled(true);
+                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Server has reached its usage limit!");
+                    exitChat(player);
+                    return;
+                }
+
                 Set<Player> newRecipients = new HashSet<Player>();
                 for (Player recipient : event.getRecipients()) {
                     if (recipient.getWorld().equals(player.getWorld()) && recipient.getLocation().distance(player.getLocation()) < chattingRadius) {

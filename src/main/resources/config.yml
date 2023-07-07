@@ -38,6 +38,28 @@ event-indicator: "[event]"
 chatting-radius: 30
 stream-responses: false
 
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                        Usage limits                                          | #
+# |                                                                                              | #
+# |                               Limit API usage using permissions                              | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+# Example: Use permission 'craftgpt.usage-limit.high' to set player's token limit to the 'high' category
+# If a player does not have a specific usage-limit permission, they will inherit the default-usage-limit
+# If a player has multiple usage-limit permissions, the limit will be set to the lowest permission the player has
+
+default-usage-limit: 25000
+global-usage-limit: 3000000 # Maximum token usage for the entire server
+
+usage-limit:
+  high:
+    max: 50000
+  medium:
+    max: 25000
+  low:
+    max: 10000
 
 # +----------------------------------------------------------------------------------------------+ #
 # |                                                                                              | #
