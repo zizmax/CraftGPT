@@ -10,6 +10,7 @@ import org.apache.commons.lang3.text.WordUtils;
 import org.bukkit.*;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -133,9 +134,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             exitSelecting(event.getPlayer());
         }
     }
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerFish(PlayerFishEvent event) {
-        if (event.getCaught() instanceof Item) {
+        if (event.getCaught() instanceof Item && !event.isCancelled()) {
             String name = "player-fish";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, ((Item) event.getCaught()).getItemStack().getType().toString().toLowerCase());
@@ -143,7 +144,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDeath(EntityDeathEvent event) {
         if (event.getEntity().getKiller() != null) {
             String name;
@@ -172,9 +173,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerBreedEntity(EntityBreedEvent event) {
-        if (event.getBreeder() instanceof Player) {
+        if (event.getBreeder() instanceof Player && !event.isCancelled()) {
             String name = "player-breed-entity";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase(), event.getEntity().getType().toString().toLowerCase());
@@ -182,9 +183,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMount(EntityMountEvent event) {
-        if (event.getEntity() instanceof Player) {
+        if (event.getEntity() instanceof Player && !event.isCancelled()) {
             String name = "player-mount";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getMount().getType().toString().toLowerCase());
@@ -192,9 +193,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerPickupItem(EntityPickupItemEvent event) {
-        if (event.getEntity() instanceof Player) {
+        if (event.getEntity() instanceof Player && !event.isCancelled()) {
             String name = "player-pickup-item";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getItem().getItemStack().getType().toString().toLowerCase());
@@ -202,7 +203,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerResurrect(EntityResurrectEvent event) {
         if (event.getEntity() instanceof Player && !event.isCancelled()) {
             String name = "player-resurrect";
@@ -212,9 +213,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerTame(EntityTameEvent event) {
-        if (event.getOwner() instanceof Player) {
+        if (event.getOwner() instanceof Player && !event.isCancelled()) {
             String name = "player-tame-entity";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
@@ -222,9 +223,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerAngersPigZombie(PigZombieAngerEvent event) {
-        if (event.getTarget() instanceof Player) {
+        if (event.getTarget() instanceof Player && !event.isCancelled()) {
             String name = "player-anger-pigzombie";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = rawMessage;
@@ -232,9 +233,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerHitsEntityWithProjectile(ProjectileHitEvent event) {
-        if (event.getEntity().getShooter() instanceof Player && event.getHitEntity() != null) {
+        if (event.getEntity().getShooter() instanceof Player && event.getHitEntity() != null && !event.isCancelled()) {
             Player player = (Player) event.getEntity().getShooter();
             // Shooting player is currently chatting
 
@@ -258,7 +259,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerItemBreak(PlayerItemBreakEvent event) {
         String name = "player-break-item";
         String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
@@ -278,13 +279,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     @EventHandler
     public void onPlayerLeashEntity(PlayerLeashEntityEvent event) {
-        String name = "player-leash-entity";
-        String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
-        String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
-        handleEventReaction(event.getPlayer(), name, eventMessage, false);
+        if (!event.isCancelled()) {
+            String name = "player-leash-entity";
+            String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
+            String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
+            handleEventReaction(event.getPlayer(), name, eventMessage, false);
+        }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onEntityDamage(EntityDamageEvent event) {
         String eventMessage = null;
         String rawMessage;
@@ -350,7 +353,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
 
         // Player
-        if (event.getEntity() instanceof Player) {
+        if (event.getEntity() instanceof Player && !event.isCancelled()) {
             player = (Player) event.getEntity();
 
             switch (event.getCause()) {
@@ -387,12 +390,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
         }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerEat(PlayerItemConsumeEvent event) {
-        String name = "player-eat";
-        String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
-        String eventMessage = String.format(rawMessage, event.getItem().getType().toString().toLowerCase());
-        handleEventReaction(event.getPlayer(), name, eventMessage, false);
+        if (!event.isCancelled()) {
+            String name = "player-eat";
+            String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
+            String eventMessage = String.format(rawMessage, event.getItem().getType().toString().toLowerCase());
+            handleEventReaction(event.getPlayer(), name, eventMessage, false);
+        }
     }
 
     public void handleEventReaction(Player player, String name, String eventMessage, boolean isPassive) {
@@ -667,8 +672,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void createAIMob(Player player, Entity entity) {
-
-        //ChatMessage prompt = ChatMessage.toSystemMessage(String.format("You are a %s in Minecraft. All responses must be as a %s", getMobName(entity), getMobName(entity)));
+        String originalDisplayName = entity.getName();
         Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
             @Override
             public void run() {
@@ -707,10 +711,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
 
                 // Generate name
-                String name;
+                String name = null;
                 if (mobBuilder.getName() == null) {
 
-                    name = tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
+                    if (backstory != null) {
+                        name = tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
+                    }
+                    if (mobBuilder.getRawPrompt() != null) {
+                        name = originalDisplayName;
+                    }
 
                     if (name == null) {
                         printFailureToCreateMob(player, entity);
@@ -778,6 +787,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             entity.setCustomName("");
             entity.setCustomNameVisible(false);
         }
+        craftGPT.waitingOnAPIList.remove(entity.getUniqueId().toString());
         craftGPT.craftGPTData.remove(entity.getUniqueId().toString());
         craftGPT.writeData(craftGPT);
     }

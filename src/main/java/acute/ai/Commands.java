@@ -233,8 +233,7 @@ public class Commands implements TabExecutor {
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                     if (!craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is already AI-enabled!");
-                                        craftGPTListener.createAIMob(player, craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity());
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is not AI-enabled!");
                                     } else {
                                         craftGPTListener.removeAIMob(player, craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity());
                                     }
