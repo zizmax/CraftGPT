@@ -1,19 +1,25 @@
 package acute.ai;
 
+import com.google.common.base.Strings;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.service.OpenAiService;
 import org.bstats.bukkit.Metrics;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +52,9 @@ public final class CraftGPT extends JavaPlugin {
 
     HashMap<String, AIMob> craftGPTData = new HashMap<>();
 
+    private File usageFile;
+    private FileConfiguration usageFileConfig;
+
     public static final String CHAT_PREFIX = ChatColor.GOLD + "[" + ChatColor.GRAY + "Craft" + ChatColor.GREEN + "GPT" + ChatColor.GOLD + "] " + ChatColor.GRAY;
     public static final String DISCORD_URL = "https://discord.gg/TYcCv3zZvF";
     public static final String SPIGOT_URL = "https://www.spigotmc.org/resources/craftgpt.110635/";
@@ -75,16 +84,22 @@ public final class CraftGPT extends JavaPlugin {
 
 
         // Save/read config.yml
+        Path path = Paths.get("plugins/CraftGPT/config.yml");
+        if (Files.exists(path)) { // Only save a backup if one already exists to prevent overwriting backup with defaults
+            try {
+                Files.copy(path,
+                        Paths.get("plugins/CraftGPT/config.bak"),
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                getLogger().warning("Failed to create backup config!");
+            }
+        }
         saveDefaultConfig();
         getConfig().options().copyDefaults(true);
 
-        try {
-            Files.copy(Paths.get("plugins/CraftGPT/config.yml"),
-                    Paths.get("plugins/CraftGPT/config.bak"),
-                    StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            getLogger().warning("Failed to create backup config!");
-        }
+
+        // Save/read usage.yml
+        createUsageFile();
 
         // Load data.json
         craftGPTData = readData(this);
@@ -97,6 +112,11 @@ public final class CraftGPT extends JavaPlugin {
         Metrics metrics = new Metrics(this, bStatsId);
 
         enableOpenAI();
+
+        if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new PlaceholderAPIExpansion(this).register();
+            getLogger().info("Registered with PlaceholderAPI");
+        }
 
         // Check for updates
         UpdateChecker.init(this, spigotID).requestUpdateCheck().whenComplete((result, exception) -> {
@@ -133,7 +153,35 @@ public final class CraftGPT extends JavaPlugin {
         }
         getLogger().info("Writing save data...");
         writeData(this);
+        saveUsageFile();
         getLogger().warning("Disabled");
+    }
+
+    public FileConfiguration getUsageFile() {
+        return this.usageFileConfig;
+    }
+
+    public void saveUsageFile() {
+        Bukkit.getScheduler().runTaskAsynchronously(this, new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    getUsageFile().save(usageFile);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
+
+    public void createUsageFile() {
+        usageFile = new File(getDataFolder(), "usage.yml");
+        if (!usageFile.exists()) {
+            usageFile.getParentFile().mkdirs();
+            saveResource("usage.yml", false);
+        }
+        this.usageFileConfig = YamlConfiguration.loadConfiguration(usageFile);
     }
 
     public void enableOpenAI() {
@@ -239,5 +287,38 @@ public final class CraftGPT extends JavaPlugin {
             return null;
         }
     }
+
+    public String rawProgressBar(int current, int max, int totalBars, char symbol, ChatColor completedColor,
+                                 ChatColor notCompletedColor) {
+        float percent = (float) current / max;
+        int progressBars = (int) (totalBars * percent);
+
+        return Strings.repeat("" + completedColor + symbol, progressBars)
+                + Strings.repeat("" + notCompletedColor + symbol, totalBars - progressBars);
+    }
+
+    public String colorProgressBar(int current, int max, int totalBars) {
+        ChatColor completedColor = ChatColor.GREEN;
+        double percentage = (double) current / max;
+        if (percentage > .5) {
+            completedColor = ChatColor.YELLOW;
+        }
+        if (percentage > .75) {
+            completedColor = ChatColor.RED;
+        }
+        return rawProgressBar(current, max, totalBars, '|', completedColor, ChatColor.GRAY);
+    }
+
+    public String getPlayerUsageProgressBar(Player player) {
+        return colorProgressBar((int) getPlayerUsagePercentage(player), 100, 40);
+    }
+
+    public double getPlayerUsagePercentage(Player player) {
+        int limit = CraftGPTListener.getTokenLimit(player);
+        int usage = getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage");
+        return 100.0 * usage / limit;
+    }
+
+
 
 }

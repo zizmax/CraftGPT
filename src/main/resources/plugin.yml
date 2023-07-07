@@ -4,6 +4,7 @@ main: acute.ai.CraftGPT
 api-version: 1.19
 authors: [ zizmax ]
 description: AI mobs in Minecraft
+softdepend: [PlaceholderAPI]
 commands:
   craftgpt:
     description: CraftGPT root command
