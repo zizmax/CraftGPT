@@ -56,7 +56,7 @@ public final class CraftGPT extends JavaPlugin {
     private FileConfiguration usageFileConfig;
 
     public static final String CHAT_PREFIX = ChatColor.GOLD + "[" + ChatColor.GRAY + "Craft" + ChatColor.GREEN + "GPT" + ChatColor.GOLD + "] " + ChatColor.GRAY;
-    public static final String DISCORD_URL = "https://discord.gg/TYcCv3zZvF";
+    public static final String DISCORD_URL = "https://discord.gg/BXhUUQEymg";
     public static final String SPIGOT_URL = "https://www.spigotmc.org/resources/craftgpt.110635/";
     public static final String UPDATE_AVAILABLE = "Update available! Download v%s ";
     public static final String UP_TO_DATE = "CraftGPT is up to date: (%s)";
@@ -162,6 +162,14 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void saveUsageFile() {
+        try {
+            getUsageFile().save(usageFile);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void saveUsageFileAsync() {
         Bukkit.getScheduler().runTaskAsynchronously(this, new Runnable() {
             @Override
             public void run() {
@@ -290,6 +298,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public String rawProgressBar(int current, int max, int totalBars, char symbol, ChatColor completedColor,
                                  ChatColor notCompletedColor) {
+        if (current > max) current = max;
         float percent = (float) current / max;
         int progressBars = (int) (totalBars * percent);
 
@@ -306,6 +315,7 @@ public final class CraftGPT extends JavaPlugin {
         if (percentage > .75) {
             completedColor = ChatColor.RED;
         }
+
         return rawProgressBar(current, max, totalBars, '|', completedColor, ChatColor.GRAY);
     }
 

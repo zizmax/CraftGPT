@@ -78,7 +78,7 @@ public class Commands implements TabExecutor {
             craftGPT.saveDefaultConfig();
             craftGPT.reloadConfig();
             craftGPT.createUsageFile();
-            craftGPT.saveUsageFile();
+            craftGPT.saveUsageFileAsync();
             craftGPT.writeData(craftGPT);
             craftGPT.readData(craftGPT);
             craftGPT.enableOpenAI();

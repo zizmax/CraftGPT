@@ -17,6 +17,7 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.spigotmc.event.entity.EntityMountEvent;
 
+import java.net.SocketTimeoutException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -617,11 +618,16 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public static void printAPIErrorConsole(OpenAiHttpException e) {
         craftGPT.getLogger().warning("OpenAI API error!");
         craftGPT.getLogger().warning("Error type: " + e.type);
-        craftGPT.getLogger().warning("Error code: " + e.statusCode);
-        craftGPT.getLogger().warning("Error message: " + e.getMessage());
-        craftGPT.getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
-        craftGPT.getLogger().warning("Using the API *REQUIRES* a paid account and is NOT free.");
-        craftGPT.getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
+        craftGPT.getLogger().warning("OpenAI error code: " + e.statusCode);
+        craftGPT.getLogger().warning("OpenAI error message: " + e.getMessage());
+        if (e.getMessage().contains("quota")) {
+            craftGPT.getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+            craftGPT.getLogger().warning("Using the API *REQUIRES* credits in your account which can either be purchased with a credit card or through a free trial.");
+            craftGPT.getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
+        }
+        else if (e.getMessage().contains("Rate limit reached")) {
+            craftGPT.getLogger().warning("This is most often occurs because the OpenAI free trial credits have a low rate limit of 3 messages/min. You must wait to send messages or add a billing method to your account.");
+        }
     }
 
     public void printFailureToCreateMob(Player player, Entity entity) {
@@ -629,7 +635,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
         player.sendMessage(ChatColor.RED + "=======================================");
         player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
-        player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "a paid account and is not free.");
+        player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");
         player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
         player.sendMessage(ChatColor.RED + "=======================================");
     }
@@ -649,9 +655,12 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     printAPIErrorConsole(e);
                     errorSignature = e.statusCode + e.type;
                 }
+
             } catch (Exception e) {
-                craftGPT.getLogger().warning("Non-OpenAI error: " + e.getMessage());
-                e.printStackTrace();
+                craftGPT.getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
+                if (!e.getMessage().contains("timeout")) {
+                    e.printStackTrace();
+                }
             }
         }
         return null;
@@ -782,6 +791,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             player.sendMessage(CraftGPT.CHAT_PREFIX + "You have reached your usage limit!");
             return;
         }
+        if (!craftGPT.apiKeySet) {
+            player.sendMessage(CraftGPT.CHAT_PREFIX + "No API key set! Set one in config.yml");
+        }
         craftGPT.chattingMobs.put(player.getUniqueId(), entity);
         renameMob(entity);
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
@@ -800,7 +812,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         if (!craftGPT.getUsageFile().isSet(path + ".total-usage")) {
             craftGPT.getUsageFile().set(path + ".total-usage", 0);
         }
-        craftGPT.saveUsageFile();
+        craftGPT.saveUsageFileAsync();
 
     }
 
@@ -809,7 +821,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         Entity entity = craftGPT.chattingMobs.get(player.getUniqueId());
         craftGPT.chattingMobs.remove(player.getUniqueId());
         renameMob(entity);
-        craftGPT.saveUsageFile();
+        craftGPT.saveUsageFileAsync();
 
     }
 
@@ -818,7 +830,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         Entity entity = craftGPT.chattingMobs.get(player.getUniqueId());
         craftGPT.chattingMobs.remove(player.getUniqueId());
         renameMob(entity);
-        craftGPT.saveUsageFile();
+        craftGPT.saveUsageFileAsync();
 
     }
 
@@ -890,39 +902,72 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
                     @Override
                     public void run() {
-                        ChatCompletionResult chatCompletions = craftGPT.openAIService.createChatCompletion(completionRequest);
-                        ChatMessage chatMessageResponse = chatCompletions.getChoices().get(0).getMessage();
-                        new BukkitRunnable() {
-                            @Override
-                            public void run() {
-                                broadcastToNearbyPlayers(player, String.format("<%s> ", aiMob.getName()) + chatMessageResponse.getContent());
+                        ChatCompletionResult chatCompletions = null;
+                        ChatMessage chatMessageResponse = null;
+                        String errorSignature = null;
+                        for (int i = 0; i < 3; i++) {
+                            try {
+                                chatCompletions = craftGPT.openAIService.createChatCompletion(completionRequest);
+                                chatMessageResponse = chatCompletions.getChoices().get(0).getMessage();
+                                break;
+                            } catch (OpenAiHttpException e) {
+                                if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
+                                    craftGPT.getLogger().warning("Failed again with identical error on try number " + (i + 1) + ".");
+                                } else {
+                                    printAPIErrorConsole(e);
+                                    errorSignature = e.statusCode + e.type;
+                                }
+                            } catch (Exception e) {
+                                craftGPT.getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
+                                if (!e.getMessage().contains("timeout")) {
+                                    e.printStackTrace();
+                                }
                             }
-                        }.runTask(craftGPT);
-                        chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
-                        if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
-                            craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
+                        }
+
+                        if (chatCompletions == null || chatMessageResponse == null) {
                             toggleWaitingOnAPI(entity);
-                        }
-                        if (craftGPT.debug) craftGPT.getLogger().info("NOT STREAMED: " + chatMessageResponse.getContent());
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    broadcastToNearbyPlayers(player, String.format("<%s> ", aiMob.getName()) + ChatColor.RED + "API error! Try again momentarily.");
+                                }
+                            }.runTask(craftGPT);
+                        } else {
 
-
-                        Usage usage = chatCompletions.getUsage();
-
-                        if (usage != null) {
-                            String path = "players." + player.getUniqueId() + ".total-usage";
-                            if (craftGPT.debug) {
-                                craftGPT.getLogger().info("getInt: " + craftGPT.getUsageFile().getInt(path));
-                                craftGPT.getLogger().info("getTotalTokens:- " + usage.getTotalTokens());
-                                craftGPT.getLogger().info("Sum: " + (craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens()));
+                            ChatMessage finalChatMessageResponse = chatMessageResponse;
+                            new BukkitRunnable() {
+                                @Override
+                                public void run() {
+                                    broadcastToNearbyPlayers(player, String.format("<%s> ", aiMob.getName()) + finalChatMessageResponse.getContent());
+                                }
+                            }.runTask(craftGPT);
+                            chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
+                            if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
+                                craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
+                                toggleWaitingOnAPI(entity);
                             }
+                            if (craftGPT.debug)
+                                craftGPT.getLogger().info("NOT STREAMED: " + chatMessageResponse.getContent());
 
-                            craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getInt("global-total-usage") + usage.getTotalTokens());
-                            craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens());
+
+                            Usage usage = chatCompletions.getUsage();
+
+                            if (usage != null) {
+                                String path = "players." + player.getUniqueId() + ".total-usage";
+                                if (craftGPT.debug) {
+                                    craftGPT.getLogger().info("getInt: " + craftGPT.getUsageFile().getInt(path));
+                                    craftGPT.getLogger().info("getTotalTokens:- " + usage.getTotalTokens());
+                                    craftGPT.getLogger().info("Sum: " + (craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens()));
+                                }
+
+                                craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getInt("global-total-usage") + usage.getTotalTokens());
+                                craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens());
 
 
-                        }
-                        else {
-                            if (craftGPT.debug) craftGPT.getLogger().info("NO USAGE, NOT STREAMED");
+                            } else {
+                                if (craftGPT.debug) craftGPT.getLogger().info("NO USAGE, NOT STREAMED");
+                            }
                         }
                     }
                 });
