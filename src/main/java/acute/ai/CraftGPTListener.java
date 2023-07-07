@@ -793,6 +793,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
         if (!craftGPT.apiKeySet) {
             player.sendMessage(CraftGPT.CHAT_PREFIX + "No API key set! Set one in config.yml");
+            return;
         }
         craftGPT.chattingMobs.put(player.getUniqueId(), entity);
         renameMob(entity);
