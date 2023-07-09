@@ -18,7 +18,6 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.spigotmc.event.entity.EntityMountEvent;
 
-import java.net.SocketTimeoutException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -29,7 +28,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     private final Random random = CraftGPT.random;
 
-    String defaultPrompt = "You are a %ENTITY_TYPE% in Minecraft. Your personality is '%BACKSTORY%' You have a player friend named %PLAYER_NAME% and are chatting with them. All responses must be as a %ENTITY_TYPE% and do not prefix your responses with your name. Keep responses short.";
+    String defaultPrompt = "You are a %ENTITY_TYPE% in Minecraft. Your personality is '%BACKSTORY%' All responses must be as a %ENTITY_TYPE% and do not prefix your responses with your name. Keep responses short.";
 
 
     public CraftGPTListener(CraftGPT craftGPT) {
@@ -50,7 +49,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
             }
             else {
-                if (craftGPT.chattingMobs.containsValue(entity)) {
+                if (craftGPT.chattingPlayers.containsValue(entity)) {
                     // Currently chatting (green lightning bolt)
                     entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.GREEN + " \u26A1");
                     // star  "\u2B50"
@@ -127,7 +126,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     @EventHandler
     public void onPlayerLogout(PlayerQuitEvent event) {
-        if (craftGPT.chattingMobs.containsKey(event.getPlayer().getUniqueId())) {
+        if (craftGPT.chattingPlayers.containsKey(event.getPlayer().getUniqueId())) {
             exitChat(event.getPlayer());
         }
         if (craftGPT.selectingPlayers.containsKey(event.getPlayer().getUniqueId())) {
@@ -140,7 +139,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-fish";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, ((Item) event.getCaught()).getItemStack().getType().toString().toLowerCase());
-            handleEventReaction(event.getPlayer(), name, eventMessage, false);
+            handlePlayerEventReaction(event.getPlayer(), name, eventMessage);
         }
     }
 
@@ -148,9 +147,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void onEntityDeath(EntityDeathEvent event) {
         if (event.getEntity().getKiller() != null) {
             String name;
-            if (craftGPT.chattingMobs.containsKey(event.getEntity().getKiller().getUniqueId())){
+            if (craftGPT.chattingPlayers.containsKey(event.getEntity().getKiller().getUniqueId())){
                 String eventMessage = "";
-                if (craftGPT.chattingMobs.get(event.getEntity().getKiller().getUniqueId()).equals(event.getEntity())) {
+                if (craftGPT.chattingPlayers.get(event.getEntity().getKiller().getUniqueId()).equals(event.getEntity())) {
                     name = "player-kill-friend";
                     eventMessage = craftGPT.getConfig().getString("events." + name + ".message");
 
@@ -160,12 +159,12 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
                     eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
                 }
-                handleEventReaction(event.getEntity().getKiller(), name, eventMessage, false);
+                handlePlayerEventReaction(event.getEntity().getKiller(), name, eventMessage);
             }
         }
         if (craftGPT.craftGPTData.containsKey(event.getEntity().getUniqueId().toString())) {
             for (Player player : craftGPT.getServer().getOnlinePlayers()) {
-                if (craftGPT.chattingMobs.containsKey(player.getUniqueId()) && craftGPT.chattingMobs.get(player.getUniqueId()).equals(event.getEntity())) {
+                if (craftGPT.chattingPlayers.containsKey(player.getUniqueId()) && craftGPT.chattingPlayers.get(player.getUniqueId()).equals(event.getEntity())) {
                     exitChat(player, "because entity died.");
                     removeAIMob(player, event.getEntity());
                 }
@@ -179,7 +178,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-breed-entity";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase(), event.getEntity().getType().toString().toLowerCase());
-            handleEventReaction((Player) event.getBreeder(), name, eventMessage, false);
+            handlePlayerEventReaction((Player) event.getBreeder(), name, eventMessage);
         }
     }
 
@@ -189,7 +188,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-mount";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getMount().getType().toString().toLowerCase());
-            handleEventReaction((Player) event.getEntity(), name, eventMessage, false);
+            handlePlayerEventReaction((Player) event.getEntity(), name, eventMessage);
         }
     }
 
@@ -199,7 +198,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-pickup-item";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getItem().getItemStack().getType().toString().toLowerCase());
-            handleEventReaction((Player) event.getEntity(), name, eventMessage, false);
+            handlePlayerEventReaction((Player) event.getEntity(), name, eventMessage);
         }
     }
 
@@ -209,7 +208,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-resurrect";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = rawMessage;
-            handleEventReaction((Player) event.getEntity(), name, eventMessage, false);
+            handlePlayerEventReaction((Player) event.getEntity(), name, eventMessage);
         }
     }
 
@@ -219,7 +218,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-tame-entity";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
-            handleEventReaction((Player) event.getOwner(), name, eventMessage, false);
+            handlePlayerEventReaction((Player) event.getOwner(), name, eventMessage);
         }
     }
 
@@ -229,7 +228,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-anger-pigzombie";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = rawMessage;
-            handleEventReaction((Player) event.getTarget(), name, eventMessage, false);
+            handlePlayerEventReaction((Player) event.getTarget(), name, eventMessage);
         }
     }
 
@@ -239,10 +238,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             Player player = (Player) event.getEntity().getShooter();
             // Shooting player is currently chatting
 
-            if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
+            if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
                 String eventMessage;
                 String name;
-                if (craftGPT.chattingMobs.get(player.getUniqueId()).equals(event.getHitEntity())) {
+                if (craftGPT.chattingPlayers.get(player.getUniqueId()).equals(event.getHitEntity())) {
                     // Player shot the mob they're currently chatting with
                     name = "player-hit-friend-projectile";
                     String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
@@ -254,7 +253,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
                     eventMessage = String.format(rawMessage, event.getHitEntity().getType().toString().toLowerCase(), event.getEntity().getType().toString().toLowerCase());
                 }
-                handleEventReaction(player, name, eventMessage, false);
+                handlePlayerEventReaction(player, name, eventMessage);
             }
         }
     }
@@ -264,7 +263,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         String name = "player-break-item";
         String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
         String eventMessage = String.format(rawMessage, event.getBrokenItem().getType().toString().toLowerCase());
-        handleEventReaction(event.getPlayer(), name, eventMessage, false);
+        handlePlayerEventReaction(event.getPlayer(), name, eventMessage);
     }
 
     @EventHandler
@@ -273,7 +272,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
         if (event.getNewLevel() > event.getOldLevel()) {
             String eventMessage = rawMessage;
-            handleEventReaction(event.getPlayer(), name, eventMessage, false);
+            handlePlayerEventReaction(event.getPlayer(), name, eventMessage);
         }
     }
 
@@ -283,7 +282,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-leash-entity";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
-            handleEventReaction(event.getPlayer(), name, eventMessage, false);
+            handlePlayerEventReaction(event.getPlayer(), name, eventMessage);
         }
     }
 
@@ -293,10 +292,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         String rawMessage;
         String name = null;
         Player player = null;
-        boolean isPassive = false;
 
         // Entity
-        if (isAIEnabled(event.getEntity()) && !event.isCancelled()) {
+        if (isAIEnabled(event.getEntity()) && !event.isCancelled() && craftGPT.chattingPlayers.values().contains(event.getEntity())) {
             // Check to see if damage killed entity to let a death event handle it instead
             if (((LivingEntity) event.getEntity()).getHealth() < event.getFinalDamage()) {
                 return;
@@ -340,14 +338,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                         return;
                 }
                 eventMessage = String.format(rawMessage, event.getCause());
-                for (Map.Entry<UUID, Entity> entry : craftGPT.chattingMobs.entrySet()) {
-                    if (event.getEntity().equals(entry.getValue())) {
-                        player = craftGPT.getServer().getPlayer(entry.getKey());
-                        isPassive = true;
-                        break;
-                        //fixme Assumes 1:1 mapping, will need to change for 1:many chats
-                    }
-                }
+                handlePassiveEventReaction(event.getEntity(), name, eventMessage);
             }
 
         }
@@ -385,10 +376,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     return;
             }
             eventMessage = rawMessage;
+            handlePlayerEventReaction(player, name, eventMessage);
         }
-        if (player != null ) handleEventReaction(player, name, eventMessage, isPassive);
-
-        }
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerEat(PlayerItemConsumeEvent event) {
@@ -396,13 +386,13 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String name = "player-eat";
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getItem().getType().toString().toLowerCase());
-            handleEventReaction(event.getPlayer(), name, eventMessage, false);
+            handlePlayerEventReaction(event.getPlayer(), name, eventMessage);
         }
     }
 
-    public void handleEventReaction(Player player, String name, String eventMessage, boolean isPassive) {
-        if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
-            UUID entityUUID = craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId();
+    public void handlePlayerEventReaction(Player player, String name, String eventMessage) {
+        if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
+            UUID entityUUID = craftGPT.chattingPlayers.get(player.getUniqueId()).getUniqueId();
             double roll = random.nextDouble();
             double chance = craftGPT.getConfig().getDouble("events." + name + ".chance") / 100.0;
             String subject;
@@ -411,13 +401,8 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 for (Entity entity : player.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
                     if (entity instanceof LivingEntity && entity.getUniqueId().equals(entityUUID)) {
                         if (!isWaitingOnAPI(entity)) {
-                            if (isPassive) {
-                                subject = String.format(craftGPT.getConfig().getString("passive-event-prefix"));
-                            }
-                            else {
-                                subject = String.format(craftGPT.getConfig().getString("player-event-prefix"), player.getDisplayName());
-                            }
-                            handleMessageResponse(true, subject + " " + eventMessage, entity, player);
+                            subject = String.format(craftGPT.getConfig().getString("player-event-prefix"), player.getDisplayName());
+                            prepareEventMessageResponse(subject + " " + eventMessage, entity, Arrays.asList(player));
                             if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
                                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + name));
                             }
@@ -441,6 +426,37 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
+    public void handlePassiveEventReaction(Entity entity, String name, String eventMessage) {
+        int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
+        if (!isWaitingOnAPI(entity)) {
+            double roll = random.nextDouble();
+            double chance = craftGPT.getConfig().getDouble("events." + name + ".chance") / 100.0;
+            String subject = String.format(craftGPT.getConfig().getString("passive-event-prefix"));;
+            if (roll <= chance) {
+                List<Player> associatedPlayers = new ArrayList<>();
+                List<Player> playersChattingWithEntity = getPlayersChattingWithEntity(entity);
+                List<Entity> nearbyEntities = entity.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius);
+                for (Player player : playersChattingWithEntity) {
+                    if (nearbyEntities.contains((Entity) player)) {
+                        associatedPlayers.add(player);
+                    }
+                }
+                if (associatedPlayers.size() > 0) {
+                    prepareEventMessageResponse(subject + " " + eventMessage, entity, associatedPlayers);
+                }
+            }
+        }
+    }
+
+    public List<Player> getPlayersChattingWithEntity(Entity entity) {
+        List<Player> playersChattingWithEntity = new ArrayList<>();
+        for (UUID uuid : craftGPT.chattingPlayers.keySet()) {
+            if (craftGPT.chattingPlayers.get(uuid).equals(entity)) {
+                playersChattingWithEntity.add(craftGPT.getServer().getPlayer(uuid));
+            }
+        }
+        return playersChattingWithEntity;
+    }
 
     public static String nonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
         List<ChatMessage> chatMessages = new ArrayList<>();
@@ -473,7 +489,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         // AI-enabled entity hit or killed another entity
-        if (event.getDamager() instanceof LivingEntity && event.getEntity() instanceof LivingEntity && craftGPT.chattingMobs.containsValue(event.getDamager())) {
+        if (event.getDamager() instanceof LivingEntity && event.getEntity() instanceof LivingEntity && craftGPT.chattingPlayers.containsValue(event.getDamager())) {
             String name;
 
             if (((LivingEntity) event.getEntity()).getHealth() < event.getFinalDamage()) {
@@ -482,19 +498,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             else {
                 name = "npc-damage-entity";
             }
-            Player player = null;
-            for(Map.Entry<UUID, Entity> entry: craftGPT.chattingMobs.entrySet()) {
-                if (event.getDamager().equals(entry.getValue())) {
-                    player = craftGPT.getServer().getPlayer(entry.getKey());
-                    break;
-                    //fixme Assumes 1:1 mapping, will need to change for 1:many chats
-                }
-            }
-            if (player != null) {
-                String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
-                String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
-                handleEventReaction(player, name, eventMessage, true);
-            }
+            String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
+            String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
+            handlePassiveEventReaction(event.getDamager(), name, eventMessage);
         }
 
         // Player hit mob with hand/item
@@ -521,26 +527,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     UUID playerUUID = player.getUniqueId();
 
                     // Enter chat mode
-                    if (!craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
-                        if (!craftGPT.chattingMobs.containsValue(entity)) {
-                            enterChat(player, entity);
-                        }
-                        else {
-                            String chattingPlayerName = "a player";
-                            for(Map.Entry<UUID, Entity> entry: craftGPT.chattingMobs.entrySet()) {
-                                if (event.getEntity().equals(entry.getValue())) {
-                                    chattingPlayerName = craftGPT.getServer().getPlayer(entry.getKey()).getName();
-                                    break;
-                                    //fixme Assumes 1:1 mapping, will need to change for 1:many chats
-                                }
-                            }
-                            player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is already chatting with " + chattingPlayerName + "!");
-                        }
+                    if (!craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
+                        enterChat(player, entity);
+                        // Previously had code in here to check if entity was already chatting with someone else.
+                        // With multi-chat there's no reason to check. If I want to add a setting to prevent multi-chat in the future, add that code back in (0.1.8 and earlier)
                     }
 
                     // Change mob
                     else {
-                        if (!craftGPT.chattingMobs.get(playerUUID).equals(entity)) {
+                        if (!craftGPT.chattingPlayers.get(playerUUID).equals(entity)) {
                             exitChat(player);
                             enterChat(player, entity);
                         }
@@ -557,14 +552,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             else {
                 String eventMessage;
                 // Player is chatting
-                if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
+                if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
 
                     // Player only hit the mob and did not kill it (we want EntityDeathEvent to catch deaths instead)
                     if (event.getFinalDamage() < ((LivingEntity) event.getEntity()).getHealth()) {
                         String name;
                         String rawMessage;
                         // Player hit currently chatting mob
-                        if (craftGPT.chattingMobs.get(player.getUniqueId()).equals(entity)) {
+                        if (craftGPT.chattingPlayers.get(player.getUniqueId()).equals(entity)) {
                             if (player.getInventory().getItemInMainHand().getType().isAir()) {
                                 name = "player-damage-friend-fist";
                                 rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
@@ -582,7 +577,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
                             eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase());
                         }
-                        handleEventReaction(player, name, eventMessage, false);
+                        handlePlayerEventReaction(player, name, eventMessage);
                     }
                 }
             }
@@ -602,20 +597,26 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         craftGPT.writeData(craftGPT);
     }
 
-    public ChatMessage generatePrompt(String playerName, AIMob aiMob) {
-        String newPrompt = defaultPrompt;
-        newPrompt = newPrompt.replace("%ENTITY_TYPE%", aiMob.getEntityType());
-        newPrompt = newPrompt.replace("%BACKSTORY%", aiMob.getBackstory());
-        newPrompt = newPrompt.replace("%PLAYER_NAME%", playerName);
-        if (craftGPT.debug) craftGPT.getLogger().info("PROMPT: " + newPrompt);
-        return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
+    public ChatMessage injectChattingPlayersIntoPrompt(Entity entity, ChatMessage prompt) {
+        String chattingInstructions = "You are currently chatting with the following players: ";
+        List<Player> playersChattingWithEntity = getPlayersChattingWithEntity(entity);
+        List<String> chattingNames= new ArrayList<>();
+        for (Player player : playersChattingWithEntity) {
+            chattingNames.add(player.getDisplayName());
+        }
+        String namesListString = "";
+        for (String name : chattingNames) {
+            namesListString = namesListString + name + ", ";
+        }
+        prompt.setContent(prompt.getContent() + " " + chattingInstructions + namesListString);
+        if (craftGPT.debug) craftGPT.getLogger().info("Injected: " + namesListString);
+        return prompt;
     }
 
-    public ChatMessage generatePrompt(String playerName, MobBuilder mobBuilder) {
+    public ChatMessage generateDefaultPrompt(MobBuilder mobBuilder) {
         String newPrompt = defaultPrompt;
         newPrompt = newPrompt.replace("%ENTITY_TYPE%", mobBuilder.getEntityType());
         newPrompt = newPrompt.replace("%BACKSTORY%", mobBuilder.getBackstory());
-        newPrompt = newPrompt.replace("%PLAYER_NAME%", playerName);
         if (craftGPT.debug) craftGPT.getLogger().info("PROMPT: " + newPrompt);
         return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
     }
@@ -744,7 +745,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     mobBuilder.setDefaultPrompt(false);
                 }
                 else {
-                    prompt = generatePrompt(player.getDisplayName(), mobBuilder);
+                    prompt = generateDefaultPrompt(mobBuilder);
                     mobBuilder.setDefaultPrompt(true);
                 }
 
@@ -781,7 +782,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public void removeAIMob(Player player, Entity entity) {
         // Disable AI for clicked mob
-        if (craftGPT.chattingMobs.containsValue(entity)) exitChat(player);
+        if (craftGPT.chattingPlayers.containsValue(entity)) exitChat(player);
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Disabled AI for %s", getMobName(entity)));
         if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
             entity.setCustomName("");
@@ -805,15 +806,17 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             player.sendMessage(CraftGPT.CHAT_PREFIX + "No API key set! Set one in config.yml");
             return;
         }
-        craftGPT.chattingMobs.put(player.getUniqueId(), entity);
+
+        // Warn about being BETA
+        if (craftGPT.chattingPlayers.values().contains(entity)) {
+            player.sendTitle("", ChatColor.YELLOW + "Multi-chat is BETA", 0, 60, 10);
+            player.sendMessage(CraftGPT.CHAT_PREFIX + "Multi-chat (2+ players talking with 1 AI mob) is currently in active development. " + ChatColor.YELLOW + "[" + ChatColor.WHITE + "Expect bugs!" + ChatColor.YELLOW + "]");
+        }
+
+        craftGPT.chattingPlayers.put(player.getUniqueId(), entity);
         renameMob(entity);
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Started chatting with %s!", aiMob.getName()));
-        if (aiMob.isDefaultPrompt()) {
-            List<ChatMessage> messages = aiMob.getMessages();
-            messages.set(0, generatePrompt(player.getDisplayName(), aiMob));
-            aiMob.setMessages(messages);
-        }
 
         // Write usage data
         if (!craftGPT.getUsageFile().isSet("players")) craftGPT.getUsageFile().createSection("players");
@@ -824,22 +827,21 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             craftGPT.getUsageFile().set(path + ".total-usage", 0);
         }
         craftGPT.saveUsageFileAsync();
-
     }
 
     public void exitChat(Player player) {
-        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s!", craftGPT.craftGPTData.get(craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId().toString()).getName()));
-        Entity entity = craftGPT.chattingMobs.get(player.getUniqueId());
-        craftGPT.chattingMobs.remove(player.getUniqueId());
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s!", craftGPT.craftGPTData.get(craftGPT.chattingPlayers.get(player.getUniqueId()).getUniqueId().toString()).getName()));
+        Entity entity = craftGPT.chattingPlayers.get(player.getUniqueId());
+        craftGPT.chattingPlayers.remove(player.getUniqueId());
         renameMob(entity);
         craftGPT.saveUsageFileAsync();
 
     }
 
     public void exitChat(Player player, String reason) {
-        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s %s", craftGPT.craftGPTData.get(craftGPT.chattingMobs.get(player.getUniqueId()).getUniqueId().toString()).getName(), reason));
-        Entity entity = craftGPT.chattingMobs.get(player.getUniqueId());
-        craftGPT.chattingMobs.remove(player.getUniqueId());
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s %s", craftGPT.craftGPTData.get(craftGPT.chattingPlayers.get(player.getUniqueId()).getUniqueId().toString()).getName(), reason));
+        Entity entity = craftGPT.chattingPlayers.get(player.getUniqueId());
+        craftGPT.chattingPlayers.remove(player.getUniqueId());
         renameMob(entity);
         craftGPT.saveUsageFileAsync();
 
@@ -880,30 +882,43 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         craftGPT.selectingPlayers.remove(player.getUniqueId());
     }
 
-    public boolean handleMessageResponse(boolean event, String chatMessage, Entity entity, Player player) {
-        String stringMessage = "";
-        if (event) stringMessage = craftGPT.getConfig().getString("event-indicator") + " " + chatMessage;
-        else stringMessage = player.getDisplayName() + " says " + chatMessage;
+    public boolean prepareChatMessageResponse(String chatMessage, Entity entity, Player player) {
+        ChatMessage chatMessageToSend = new ChatMessage(ChatMessageRole.USER.value(), player.getDisplayName() + " says " + chatMessage);
+        if (handleMessageResponse(chatMessageToSend, entity, Arrays.asList(player))) return true;
+        else return false;
+    }
+
+    public boolean prepareEventMessageResponse(String chatMessage, Entity entity, List<Player> associatedPlayers) {
+        ChatMessage chatMessageToSend = new ChatMessage(ChatMessageRole.ASSISTANT.value(), craftGPT.getConfig().getString("event-indicator") + " " + chatMessage);
+        if (handleMessageResponse(chatMessageToSend, entity, associatedPlayers)) return true;
+        else return false;
+    }
+
+    public boolean handleMessageResponse(ChatMessage chatMessage, Entity entity, List<Player> associatedPlayers) {
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
         List<ChatMessage> chatMessages = aiMob.getMessages();
         if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
-            // Prepare the ChatRequest
-            ChatMessage chatMessageToSend;
-            if (event) chatMessageToSend = new ChatMessage(ChatMessageRole.ASSISTANT.value(), stringMessage);
-            else chatMessageToSend = new ChatMessage(ChatMessageRole.USER.value(), stringMessage);
-            chatMessages.add(chatMessageToSend);
-            List<ChatMessage> truncatedMessages = chatMessages;
+            chatMessages.add(chatMessage);
+            List<ChatMessage> chatMessagesToSend = new ArrayList<>();
+            for (ChatMessage i : chatMessages) {
+                chatMessagesToSend.add(new ChatMessage(i.getRole(), i.getContent()));
+            }
             int messageCutoff = craftGPT.getConfig().getInt("messages-cutoff");
             if (messageCutoff > 0 && chatMessages.size() > messageCutoff) {
-                truncatedMessages.subList(1, chatMessages.size() - messageCutoff).clear();
+                chatMessagesToSend.subList(1, chatMessages.size() - messageCutoff).clear();
             }
 
             List<String> line = new ArrayList<String>();
 
             toggleWaitingOnAPI(entity);
 
+
+            if (aiMob.isDefaultPrompt()) {
+                chatMessagesToSend.set(0, injectChattingPlayersIntoPrompt(entity, chatMessagesToSend.get(0)));
+            }
+
             ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
-                    .messages(chatMessages)
+                    .messages(chatMessagesToSend)
                     .temperature((double) aiMob.getTemperature())
                     .model("gpt-3.5-turbo")
                     .build();
@@ -941,7 +956,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             new BukkitRunnable() {
                                 @Override
                                 public void run() {
-                                    broadcastToNearbyPlayers(player, String.format("<%s> ", aiMob.getName()) + ChatColor.RED + "API error! Try again momentarily.");
+                                    broadcastToNearbyPlayers(entity, String.format("<%s> ", aiMob.getName()) + ChatColor.RED + "API error! Try again momentarily.");
                                 }
                             }.runTask(craftGPT);
                         } else {
@@ -950,7 +965,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             new BukkitRunnable() {
                                 @Override
                                 public void run() {
-                                    broadcastToNearbyPlayers(player, String.format("<%s> ", aiMob.getName()) + finalChatMessageResponse.getContent());
+                                    broadcastToNearbyPlayers(entity, String.format("<%s> ", aiMob.getName()) + finalChatMessageResponse.getContent());
                                 }
                             }.runTask(craftGPT);
                             chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
@@ -958,22 +973,45 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
                                 toggleWaitingOnAPI(entity);
                             }
-                            if (craftGPT.debug)
-                                craftGPT.getLogger().info("NOT STREAMED: " + chatMessageResponse.getContent());
+                            if (craftGPT.debug) {
+                                craftGPT.getLogger().info("=== NOT STREAMED ===");
+                                craftGPT.getLogger().info("= Original prompt: " + chatMessages.get(0).getContent());
+                                craftGPT.getLogger().info("= Sent prompt: " + chatMessagesToSend.get(0).getContent());
+                                craftGPT.getLogger().info("= Response: " + chatMessageResponse.getContent());
+                                craftGPT.getLogger().info("= Total messages: " + chatMessages.size());
+                                craftGPT.getLogger().info("= Sent messages: " + chatMessagesToSend.size());
+
+                            }
 
 
                             Usage usage = chatCompletions.getUsage();
 
-                            if (usage != null) {
-                                String path = "players." + player.getUniqueId() + ".total-usage";
+
+
+                            if (usage != null && associatedPlayers.size() > 0) {
+                                // Allocate per-player usage
+                                long perPlayerUsage = usage.getTotalTokens() / associatedPlayers.size();
                                 if (craftGPT.debug) {
-                                    craftGPT.getLogger().info("getInt: " + craftGPT.getUsageFile().getInt(path));
-                                    craftGPT.getLogger().info("getTotalTokens:- " + usage.getTotalTokens());
-                                    craftGPT.getLogger().info("Sum: " + (craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens()));
+                                    craftGPT.getLogger().info("= Total tokens from this chat: " + usage.getTotalTokens());
+                                    craftGPT.getLogger().info("= Per player tokens from this chat: " + perPlayerUsage);
+                                }
+                                for (Player player : associatedPlayers) {
+                                    String path = "players." + player.getUniqueId() + ".total-usage";
+                                    craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getInt(path) + perPlayerUsage);
+                                    if (craftGPT.debug) {
+                                        craftGPT.getLogger().info(String.format("= %s current usage: %s", player.getDisplayName(), craftGPT.getUsageFile().getInt(path)));
+                                        craftGPT.getLogger().info(String.format("= %s now: %s", player.getDisplayName(), craftGPT.getUsageFile().getInt(path) + perPlayerUsage));
+                                    }
                                 }
 
+                                // Global usage
                                 craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getInt("global-total-usage") + usage.getTotalTokens());
-                                craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getInt(path) + usage.getTotalTokens());
+
+                                if (craftGPT.debug) {
+                                    craftGPT.getLogger().info("====== END ======");
+                                }
+
+
 
 
                             } else {
@@ -985,6 +1023,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             }
 
             else {
+                // Streaming
                 Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
                     @Override
                     public void run() {
@@ -1020,7 +1059,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 new BukkitRunnable() {
                                     @Override
                                     public void run() {
-                                        broadcastToNearbyPlayers(player, lineString);
+                                        broadcastToNearbyPlayers(entity, lineString);
                                         if (craftGPT.debug) craftGPT.getLogger().info("STREAMED: " + lineString);
 
                                     }
@@ -1042,7 +1081,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                     new BukkitRunnable() {
                                         @Override
                                         public void run() {
-                                            broadcastToNearbyPlayers(player, finalLineTemp);
+                                            broadcastToNearbyPlayers(entity, finalLineTemp);
                                         }
                                     }.runTask(craftGPT);
                                     if (craftGPT.debug) craftGPT.getLogger().info("STREAMED: " + finalLineTemp);
@@ -1064,15 +1103,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             return true;
         }
         else {
-            craftGPT.getLogger().warning(String.format("Player <%s> just tried to send message %s to a %s at %s which failed because the entity is not AI enabled. Did entity respawn?", player.getDisplayName(), chatMessage, entity.getType(), entity.getLocation()));
+            craftGPT.getLogger().warning(String.format("Just tried to talk with a %s at %s which failed because the entity is not AI enabled. Did entity respawn?", entity.getType(), entity.getLocation()));
             return false;
         }
     }
 
-    public void broadcastToNearbyPlayers(Player player, String message) {
-        player.sendMessage(message);
+    public void broadcastToNearbyPlayers(Entity entity, String message) {
         int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
-        for (Entity nearbyEntity : player.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
+        for (Entity nearbyEntity : entity.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
             if (nearbyEntity instanceof Player) {
                 Player nearbyPlayer = (Player) nearbyEntity;
                 nearbyPlayer.sendMessage(message);
@@ -1094,19 +1132,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         else {
             limit = craftGPT.getConfig().getInt("default-usage-limit");
         }
-        if (craftGPT.debug) {
-            craftGPT.getLogger().info("Limit: " + limit);
-            craftGPT.getLogger().info("Total usage: " + craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage"));
-        }
         return limit;
     }
 
     @EventHandler
     public void onAsyncPlayerChatEvent (AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-        if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
+        if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
             int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
-            Entity mob = craftGPT.chattingMobs.get(player.getUniqueId());
+            Entity mob = craftGPT.chattingPlayers.get(player.getUniqueId());
             if (player.getWorld().equals(mob.getWorld()) && player.getLocation().distance(mob.getLocation()) < chattingRadius) {
                 if (isWaitingOnAPI(mob)) {
                     event.setCancelled(true);
@@ -1136,7 +1170,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
                 event.getRecipients().clear();
                 event.getRecipients().addAll(newRecipients);
-                handleMessageResponse(false, event.getMessage(), mob, player);
+                prepareChatMessageResponse(event.getMessage(), mob, player);
             }
             else {
                 event.setCancelled(true);

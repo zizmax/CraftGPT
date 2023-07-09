@@ -42,7 +42,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public List<String> waitingOnAPIList = new ArrayList<>();
 
-    HashMap<UUID, Entity> chattingMobs = new HashMap<>();
+    HashMap<UUID, Entity> chattingPlayers = new HashMap<>();
 
     ArrayList<UUID> debuggingPlayers = new ArrayList<>();
 
@@ -96,6 +96,10 @@ public final class CraftGPT extends JavaPlugin {
         }
         saveDefaultConfig();
         getConfig().options().copyDefaults(true);
+        debug = getConfig().getBoolean("debug");
+        if (debug) {
+            getLogger().info(CHAT_PREFIX + "Debug mode enabled!");
+        }
 
 
         // Save/read usage.yml
@@ -144,8 +148,8 @@ public final class CraftGPT extends JavaPlugin {
     @Override
     public void onDisable() {
         getLogger().info("Disabling...");
-        if (!chattingMobs.isEmpty()) {
-            for (UUID uuid: chattingMobs.keySet()) {
+        if (!chattingPlayers.isEmpty()) {
+            for (UUID uuid: chattingPlayers.keySet()) {
                 getLogger().info("Ending chats...");
                 CraftGPTListener craftGPTListener = new CraftGPTListener(this);
                 craftGPTListener.exitChat(getServer().getPlayer(uuid));

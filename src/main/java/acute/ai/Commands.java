@@ -11,7 +11,6 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.TabExecutor;
-import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -77,6 +76,10 @@ public class Commands implements TabExecutor {
         } else {
             craftGPT.saveDefaultConfig();
             craftGPT.reloadConfig();
+            craftGPT.debug = craftGPT.getConfig().getBoolean("debug");
+            if (craftGPT.debug) {
+                sender.sendMessage(CraftGPT.CHAT_PREFIX + "Debug mode enabled!");
+            }
             craftGPT.createUsageFile();
             craftGPT.saveUsageFileAsync();
             craftGPT.writeData(craftGPT);
@@ -204,7 +207,7 @@ public class Commands implements TabExecutor {
                                 player.getInventory().addItem(wand);
                             }
                         } else if (args[0].equals("stop")) {
-                            if (craftGPT.chattingMobs.containsKey(player.getUniqueId())) {
+                            if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
                                 craftGPTListener.exitChat(player);
                             } else {
                                 player.sendMessage(CraftGPT.CHAT_PREFIX + "Not currently chatting!");
