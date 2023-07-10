@@ -149,8 +149,9 @@ public final class CraftGPT extends JavaPlugin {
     public void onDisable() {
         getLogger().info("Disabling...");
         if (!chattingPlayers.isEmpty()) {
-            for (UUID uuid: chattingPlayers.keySet()) {
-                getLogger().info("Ending chats...");
+            getLogger().info("Ending chats...");
+            Set<UUID> chattingUUIDs = new HashSet<>(chattingPlayers.keySet());
+            for (UUID uuid: chattingUUIDs) {
                 CraftGPTListener craftGPTListener = new CraftGPTListener(this);
                 craftGPTListener.exitChat(getServer().getPlayer(uuid));
             }
@@ -174,6 +175,12 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void saveUsageFileAsync() {
+
+        // Can't run/schedule async tasks when disabled!
+        if (!this.isEnabled()) {
+            saveUsageFile();
+            return;
+        }
         Bukkit.getScheduler().runTaskAsynchronously(this, new Runnable() {
             @Override
             public void run() {
