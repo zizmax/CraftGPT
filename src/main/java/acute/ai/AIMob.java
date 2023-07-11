@@ -14,6 +14,8 @@ class AIMob {
     private String entityType;
     private String backstory;
 
+    private String visibility;
+
 
     public Float getTemperature() {
         return temperature;
@@ -70,5 +72,9 @@ class AIMob {
     public void setBackstory(String backstory) {
         this.backstory = backstory;
     }
+
+    public String getVisibility() {return visibility; }
+
+    public void setVisibility(String visibility) {this.visibility = visibility; }
 
 }

@@ -35,7 +35,7 @@ messages-cutoff: 8
 player-event-prefix: "your friend %s"
 passive-event-prefix: "" # Left blank on purpose!
 event-indicator: "[event]"
-chatting-radius: 30
+interaction-radius: 30 # Setting this too high will cause lag!
 stream-responses: false
 
 # +----------------------------------------------------------------------------------------------+ #

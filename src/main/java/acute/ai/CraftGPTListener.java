@@ -397,12 +397,12 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             double chance = craftGPT.getConfig().getDouble("events." + name + ".chance") / 100.0;
             String subject;
             if (roll <= chance) {
-                int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
+                int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
                 for (Entity entity : player.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
                     if (entity instanceof LivingEntity && entity.getUniqueId().equals(entityUUID)) {
                         if (!isWaitingOnAPI(entity)) {
                             subject = String.format(craftGPT.getConfig().getString("player-event-prefix"), player.getDisplayName());
-                            prepareEventMessageResponse(subject + " " + eventMessage, entity, Arrays.asList(player));
+                            prepareEventMessageResponse(subject + " " + eventMessage, entity, Arrays.asList(player), new HashSet<>(getPlayersWithinInteractionRadius(entity.getLocation())));
                             if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
                                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + name));
                             }
@@ -427,7 +427,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void handlePassiveEventReaction(Entity entity, String name, String eventMessage) {
-        int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
+        int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
         if (!isWaitingOnAPI(entity)) {
             double roll = random.nextDouble();
             double chance = craftGPT.getConfig().getDouble("events." + name + ".chance") / 100.0;
@@ -442,7 +442,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     }
                 }
                 if (associatedPlayers.size() > 0) {
-                    prepareEventMessageResponse(subject + " " + eventMessage, entity, associatedPlayers);
+                    prepareEventMessageResponse(subject + " " + eventMessage, entity, associatedPlayers, new HashSet<>(associatedPlayers));
                 }
             }
         }
@@ -882,19 +882,19 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         craftGPT.selectingPlayers.remove(player.getUniqueId());
     }
 
-    public boolean prepareChatMessageResponse(String chatMessage, Entity entity, Player player) {
+    public boolean prepareChatMessageResponse(String chatMessage, Entity entity, Player player, Set<Player> recipients) {
         ChatMessage chatMessageToSend = new ChatMessage(ChatMessageRole.USER.value(), player.getDisplayName() + " says " + chatMessage);
-        if (handleMessageResponse(chatMessageToSend, entity, Arrays.asList(player))) return true;
+        if (handleMessageResponse(chatMessageToSend, entity, Arrays.asList(player), recipients)) return true;
         else return false;
     }
 
-    public boolean prepareEventMessageResponse(String chatMessage, Entity entity, List<Player> associatedPlayers) {
+    public boolean prepareEventMessageResponse(String chatMessage, Entity entity, List<Player> associatedPlayers, Set<Player> recipients) {
         ChatMessage chatMessageToSend = new ChatMessage(ChatMessageRole.ASSISTANT.value(), craftGPT.getConfig().getString("event-indicator") + " " + chatMessage);
-        if (handleMessageResponse(chatMessageToSend, entity, associatedPlayers)) return true;
+        if (handleMessageResponse(chatMessageToSend, entity, associatedPlayers, recipients)) return true;
         else return false;
     }
 
-    public boolean handleMessageResponse(ChatMessage chatMessage, Entity entity, List<Player> associatedPlayers) {
+    public boolean handleMessageResponse(ChatMessage chatMessage, Entity entity, List<Player> associatedPlayers, Set<Player> recipients) {
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
         List<ChatMessage> chatMessages = aiMob.getMessages();
         if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
@@ -953,21 +953,19 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
                         if (chatCompletions == null || chatMessageResponse == null) {
                             toggleWaitingOnAPI(entity);
-                            new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    broadcastToNearbyPlayers(entity, String.format("<%s> ", aiMob.getName()) + ChatColor.RED + "API error! Try again momentarily.");
-                                }
-                            }.runTask(craftGPT);
+
+                            for (Player recipient : recipients) {
+                                recipient.sendMessage(String.format("<%s> ", aiMob.getName()) + ChatColor.RED + "API error! Try again momentarily.");
+                            }
+
                         } else {
 
                             ChatMessage finalChatMessageResponse = chatMessageResponse;
-                            new BukkitRunnable() {
-                                @Override
-                                public void run() {
-                                    broadcastToNearbyPlayers(entity, String.format("<%s> ", aiMob.getName()) + finalChatMessageResponse.getContent());
-                                }
-                            }.runTask(craftGPT);
+
+                            for (Player recipient : recipients) {
+                                recipient.sendMessage(String.format("<%s> ", aiMob.getName()) + finalChatMessageResponse.getContent());
+                            }
+
                             chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
                             if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
                                 craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
@@ -1109,13 +1107,24 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void broadcastToNearbyPlayers(Entity entity, String message) {
-        int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
+        int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
         for (Entity nearbyEntity : entity.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
             if (nearbyEntity instanceof Player) {
                 Player nearbyPlayer = (Player) nearbyEntity;
                 nearbyPlayer.sendMessage(message);
             }
         }
+    }
+
+    public List<Player> getPlayersWithinInteractionRadius(Location location) {
+        int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
+        List<Player> nearbyPlayers = new ArrayList<>();
+        for (Entity nearbyEntity : location.getWorld().getNearbyEntities(location, chattingRadius, chattingRadius, chattingRadius)) {
+            if (nearbyEntity instanceof Player) {
+                nearbyPlayers.add((Player) nearbyEntity);
+            }
+        }
+        return nearbyPlayers;
     }
 
     public static int getTokenLimit(Player player) {
@@ -1138,9 +1147,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     @EventHandler
     public void onAsyncPlayerChatEvent (AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
+        Entity mob = craftGPT.chattingPlayers.get(player.getUniqueId());
+        AIMob aiMob = craftGPT.craftGPTData.get(mob.getUniqueId().toString());
         if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
-            int chattingRadius = craftGPT.getConfig().getInt("chatting-radius");
-            Entity mob = craftGPT.chattingPlayers.get(player.getUniqueId());
+            int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
             if (player.getWorld().equals(mob.getWorld()) && player.getLocation().distance(mob.getLocation()) < chattingRadius) {
                 if (isWaitingOnAPI(mob)) {
                     event.setCancelled(true);
@@ -1163,18 +1173,50 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
 
                 Set<Player> newRecipients = new HashSet<Player>();
-                for (Player recipient : event.getRecipients()) {
-                    if (recipient.getWorld().equals(player.getWorld()) && recipient.getLocation().distance(player.getLocation()) < chattingRadius) {
-                        newRecipients.add(recipient);
-                    }
+
+                // Set recipients based on visibility
+
+                if (aiMob.getVisibility() == null) {
+                    aiMob.setVisibility("normal");
                 }
-                event.getRecipients().clear();
-                event.getRecipients().addAll(newRecipients);
-                prepareChatMessageResponse(event.getMessage(), mob, player);
+
+                // Global: All players can see message/response
+                if (!aiMob.getVisibility().equals("global")) {
+                    // Private: Only the chatting player can see message/response
+                    if (aiMob.getVisibility().equals("private")) {
+                        newRecipients.add(player);
+                    }
+                    // World: Only players in the same world can see message/response
+                    else if (aiMob.getVisibility().equals("world")) {
+                        newRecipients.add(player);
+                        for (Player recipient : event.getRecipients()) {
+                            if (recipient.getWorld().equals(player.getWorld())) {
+                                newRecipients.add(recipient);
+                            }
+                        }
+                    }
+                    // Normal: Only players in within the interaction radius can see message/response
+                    else if (aiMob.getVisibility().equals("normal")) {
+                        newRecipients.add(player);
+                        for (Player recipient : event.getRecipients()) {
+                            if (recipient.getWorld().equals(player.getWorld()) && recipient.getLocation().distance(player.getLocation()) < chattingRadius) {
+                                newRecipients.add(recipient);
+                            }
+                        }
+
+                    }
+                    event.getRecipients().clear();
+                    event.getRecipients().addAll(newRecipients);
+                    prepareChatMessageResponse(event.getMessage(), mob, player, newRecipients);
+                }
+                else {
+                    prepareChatMessageResponse(event.getMessage(), mob, player, event.getRecipients());
+                }
+
             }
             else {
                 event.setCancelled(true);
-                String name = craftGPT.craftGPTData.get(mob.getUniqueId().toString()).getName();
+                String name = aiMob.getName();
                 player.sendMessage(CraftGPT.CHAT_PREFIX + name + " is too far away to hear you! Use " + ChatColor.GOLD + "/cg stop" + ChatColor.GRAY + " to exit chat.");
             }
         }

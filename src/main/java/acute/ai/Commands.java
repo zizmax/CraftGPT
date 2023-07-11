@@ -17,6 +17,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.StringUtil;
+import org.checkerframework.checker.units.qual.C;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,12 +31,20 @@ public class Commands implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clear", "save", "displayname");
+        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clear", "save", "displayname", "visibility");
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
             StringUtil.copyPartialMatches(args[0], commands, completions);
             return completions;
+        }
+
+        if (args.length == 2) {
+            if (args[0].equals("visibility")) {
+                List<String> options = List.of("global", "private", "normal", "world");
+                StringUtil.copyPartialMatches(args[1], options, completions);
+                return completions;
+            }
         }
         return null;
     }
@@ -159,6 +168,30 @@ public class Commands implements TabExecutor {
                         } else if (args[0].equals("lol")) {
                             ItemStack map = new ItemStack(Material.FILLED_MAP, 1);
                             MapMeta meta = (MapMeta) map.getItemMeta();
+                            //fixme Should probably remove
+                        } else if (args[0].equals("visibility")) {
+                            if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());
+                                if (args.length > 1) {
+                                    if (args[1].equals("world")) {
+                                        aiMob.setVisibility("world");
+                                    } else if (args[1].equals("normal")) {
+                                        aiMob.setVisibility("normal");
+                                    } else if (args[1].equals("global")) {
+                                        aiMob.setVisibility("global");
+                                    } else if (args[1].equals("private")) {
+                                        aiMob.setVisibility("private");
+                                    } else {
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Unrecognized visibility!");
+                                        return true;
+                                    }
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Visibility set to: " + args[1]);
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + aiMob.getName() + ChatColor.GRAY + " has visibility: " + aiMob.getVisibility());
+                                }
+                            } else {
+                                player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
+                            }
 
                         } else if (args[0].equals("displayname")) {
                             if (args.length > 1) {
