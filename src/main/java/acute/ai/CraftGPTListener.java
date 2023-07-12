@@ -1147,9 +1147,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     @EventHandler
     public void onAsyncPlayerChatEvent (AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-        Entity mob = craftGPT.chattingPlayers.get(player.getUniqueId());
-        AIMob aiMob = craftGPT.craftGPTData.get(mob.getUniqueId().toString());
         if (craftGPT.chattingPlayers.containsKey(player.getUniqueId())) {
+            Entity mob = craftGPT.chattingPlayers.get(player.getUniqueId());
+            AIMob aiMob = craftGPT.craftGPTData.get(mob.getUniqueId().toString());
             int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
             if (player.getWorld().equals(mob.getWorld()) && player.getLocation().distance(mob.getLocation()) < chattingRadius) {
                 if (isWaitingOnAPI(mob)) {
