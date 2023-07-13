@@ -30,13 +30,27 @@ api_key: "API KEY HERE"
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
+# OpenAI API settings:
 default-temperature: 1.0
-messages-cutoff: 8
-player-event-prefix: "your friend %s"
-passive-event-prefix: "" # Left blank on purpose!
-event-indicator: "[event]"
+messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
+
+# In-game interaction settings
 interaction-radius: 30 # Setting this too high will cause lag!
-stream-responses: false
+
+# Auto-spawn settings
+# With this enabled, all mobs that spawn naturally in the below worlds will have a % chance of becoming AI-enabled
+auto-spawn:
+  enabled: false
+  chance: 1.5 # Percentage where 1.5 = 1.5%
+  # NOTE: Backstories and names for auto-spawned AI mobs are randomly generated.
+  # Any string in prompt-appendix will be appended to the prompt/personality of EVERY auto-spawned mob
+  # Use it for details about your server or world that you want the mobs to know
+  prompt-appendix: "" # Leave blank for personalities to be completely random
+  worlds:
+    - "world"
+    - "world_the_end"
+    - "world_nether"
+
 
 # +----------------------------------------------------------------------------------------------+ #
 # |                                                                                              | #
@@ -61,6 +75,7 @@ usage-limit:
   low:
     max: 10000
 
+
 # +----------------------------------------------------------------------------------------------+ #
 # |                                                                                              | #
 # |                                            Events                                            | #
@@ -68,6 +83,12 @@ usage-limit:
 # |                        Customize how AI-mobs react to in-game events                         | #
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
+
+# ==== Don't touch the settings below unless you know what you're doing ====
+player-event-prefix: "your friend %s"
+passive-event-prefix: "" # Left blank on purpose!
+event-indicator: "[event]"
+# ==== Don't touch the settings above unless you know what you're doing ====
 
 events:
   player-fish:
