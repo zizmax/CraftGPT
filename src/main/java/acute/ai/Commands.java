@@ -282,7 +282,7 @@ public class Commands implements TabExecutor {
                                 sayNoPermission(player);
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                    MobBuilder selection = craftGPT.selectingPlayers.get(player.getUniqueId());
+                                    AIMob selection = craftGPT.selectingPlayers.get(player.getUniqueId());
                                     selection.setName(null);
                                     selection.setRawPrompt(null);
                                     selection.setBackstory(null);
@@ -442,7 +442,7 @@ public class Commands implements TabExecutor {
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                     if (!craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
-                                        MobBuilder selection = craftGPT.selectingPlayers.get(player.getUniqueId());
+                                        AIMob selection = craftGPT.selectingPlayers.get(player.getUniqueId());
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "+++++++++++++++++++++++++++++++++++++++++");
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Dry run for selected " + ChatColor.GOLD + craftGPTListener.getMobName(selection.getEntity()));
                                         if (selection.getName() != null) {

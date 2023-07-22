@@ -46,7 +46,7 @@ public final class CraftGPT extends JavaPlugin {
 
     ArrayList<UUID> debuggingPlayers = new ArrayList<>();
 
-    HashMap<UUID, MobBuilder> selectingPlayers = new HashMap<>();
+    HashMap<UUID, AIMob> selectingPlayers = new HashMap<>();
 
     private final Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassTypeAdapter()).setPrettyPrinting().create();
 
