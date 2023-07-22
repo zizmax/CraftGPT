@@ -33,6 +33,11 @@ api_key: "API KEY HERE"
 # OpenAI API settings:
 default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
+timeout: 10 # Seconds before the HTTP connection times out and the request is retried
+proxy:
+  enabled: false
+  host: "192.168.1.1"
+  port: 1000
 
 # In-game interaction settings
 interaction-radius: 30 # Setting this too high will cause lag!
