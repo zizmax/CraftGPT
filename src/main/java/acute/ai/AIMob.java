@@ -1,6 +1,7 @@
 package acute.ai;
 
 import com.theokanning.openai.completion.chat.ChatMessage;
+import org.bukkit.entity.Entity;
 
 import java.util.List;
 
@@ -9,11 +10,12 @@ class AIMob {
     private float temperature;
     private Integer tokens;
     private String name;
+    private Entity entity;
     private List<ChatMessage> messages;
     private boolean defaultPrompt;
+    private String rawPrompt;
     private String entityType;
     private String backstory;
-
     private String visibility;
 
 
@@ -40,6 +42,14 @@ class AIMob {
         this.name = name;
     }
 
+    public Entity getEntity() {
+        return entity;
+    }
+
+    public void setEntity(Entity entity) {
+        this.entity = entity;
+    }
+
     public List<ChatMessage> getMessages() {
         return messages;
     }
@@ -55,6 +65,14 @@ class AIMob {
 
     public void setDefaultPrompt(boolean defaultPrompt) {
         this.defaultPrompt = defaultPrompt;
+    }
+
+    public String getRawPrompt() {
+        return rawPrompt;
+    }
+
+    public void setRawPrompt(String rawPrompt) {
+        this.rawPrompt = rawPrompt;
     }
 
     public String getEntityType() {

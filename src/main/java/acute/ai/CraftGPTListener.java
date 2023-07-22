@@ -30,7 +30,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     private final Random random = CraftGPT.random;
 
-    String defaultPrompt = "You are a %ENTITY_TYPE% in Minecraft. Your personality is '%BACKSTORY%' All responses must be as a %ENTITY_TYPE% and do not prefix your responses with your name. Keep responses short.";
+    String defaultPrompt = "You are a %ENTITY_TYPE% in Minecraft. Your personality is '%BACKSTORY%' All responses must be as a %ENTITY_TYPE%. Do not prefix your responses with your name. Keep responses short.";
 
 
     public CraftGPTListener(CraftGPT craftGPT) {
@@ -636,14 +636,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         return prompt;
     }
 
-    public ChatMessage generateDefaultPrompt(MobBuilder mobBuilder) {
-        String newPrompt = defaultPrompt;
-        newPrompt = newPrompt.replace("%ENTITY_TYPE%", mobBuilder.getEntityType());
-        newPrompt = newPrompt.replace("%BACKSTORY%", mobBuilder.getBackstory());
-        if (craftGPT.debug) craftGPT.getLogger().info("PROMPT: " + newPrompt);
-        return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
-    }
-
     public ChatMessage generateDefaultPrompt(AIMob aiMob) {
         String newPrompt = defaultPrompt;
         newPrompt = newPrompt.replace("%ENTITY_TYPE%", aiMob.getEntityType());
@@ -709,7 +701,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             @Override
             public void run() {
                 List<ChatMessage> messages = new ArrayList<>();
-                MobBuilder mobBuilder = craftGPT.selectingPlayers.get(player.getUniqueId());
+                AIMob mobBuilder = craftGPT.selectingPlayers.get(player.getUniqueId());
                 String response = null;
 
                 mobBuilder.setEntityType(entity.getType().toString().toLowerCase());
@@ -946,7 +938,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void enterSelecting(Player player, Entity entity) {
-        MobBuilder mobSelection = new MobBuilder();
+        AIMob mobSelection = new AIMob();
         mobSelection.setEntity(entity);
         craftGPT.selectingPlayers.put(player.getUniqueId(), mobSelection);
         String mobName;
