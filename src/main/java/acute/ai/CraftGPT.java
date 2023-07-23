@@ -231,7 +231,7 @@ public final class CraftGPT extends JavaPlugin {
                     .newBuilder()
                     .proxy(proxy)
                     .build();
-            getLogger().info("Connecting to OpenAI via proxy...");
+            getLogger().info("Connecting to OpenAI via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
 
         } else {
             client = defaultClient(key, Duration.ofSeconds(getConfig().getInt("timeout")))
