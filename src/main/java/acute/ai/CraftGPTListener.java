@@ -13,11 +13,9 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.checkerframework.checker.units.qual.A;
 import org.spigotmc.event.entity.EntityMountEvent;
 
 import java.util.*;
@@ -29,8 +27,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     private static CraftGPT craftGPT;
 
     private final Random random = CraftGPT.random;
-
-    String defaultPrompt = "You are a %ENTITY_TYPE% in Minecraft. Your personality is '%BACKSTORY%' All responses must be as a %ENTITY_TYPE%. Do not prefix your responses with your name. Keep responses short.";
 
 
     public CraftGPTListener(CraftGPT craftGPT) {
@@ -93,7 +89,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public String getMobName(Entity entity) {
         if (entity instanceof Player || entity.hasMetadata("NPC")) {
-            return entity.getCustomName();
+            return entity.getName();
         }
         String name = entity.getType().toString();
         name = name.substring(0,1).toUpperCase() + name.substring(1).toLowerCase();
@@ -607,21 +603,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    public void createAIMobData(String uuid, String name, float temperature, List<ChatMessage> messages, boolean defaultPrompt, String entityType, String backstory) {
-        AIMob aiMob = new AIMob();
-        aiMob.setName(name);
-        aiMob.setTokens(0);
-        aiMob.setTemperature(temperature);
-        aiMob.setMessages(messages);
-        aiMob.setDefaultPrompt(defaultPrompt);
-        aiMob.setEntityType(entityType);
-        aiMob.setBackstory(backstory);
+    public void createAIMobData(AIMob aiMob, String uuid) {
+        craftGPT.getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
         craftGPT.craftGPTData.put(uuid, aiMob);
         craftGPT.writeData(craftGPT);
     }
 
     public ChatMessage injectChattingPlayersIntoPrompt(Entity entity, ChatMessage prompt) {
-        String chattingInstructions = "You are currently chatting with the following players: ";
+        String chattingInstructions = craftGPT.getConfig().getString("prompt.chatting-instructions");
         List<Player> playersChattingWithEntity = getPlayersChattingWithEntity(entity);
         List<String> chattingNames= new ArrayList<>();
         for (Player player : playersChattingWithEntity) {
@@ -637,7 +626,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public ChatMessage generateDefaultPrompt(AIMob aiMob) {
-        String newPrompt = defaultPrompt;
+        String newPrompt = craftGPT.getConfig().getString("prompt.default-system-prompt");
         newPrompt = newPrompt.replace("%ENTITY_TYPE%", aiMob.getEntityType());
         newPrompt = newPrompt.replace("%BACKSTORY%", aiMob.getBackstory());
         if (craftGPT.debug) craftGPT.getLogger().info("PROMPT: " + newPrompt);
@@ -709,12 +698,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 // Generate backstory
                 String backstory = null;
                 if (mobBuilder.getBackstory() == null && mobBuilder.getRawPrompt() == null) {
-                    String systemMessage = "You are writing short but wacky personalities and names for characters in a Minecraft world.";
+                    String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
                     String userMessage = "";
                     if (mobBuilder.getName() == null) {
-                        userMessage = String.format("Write a personality and backstory and name for this particular %s in 50 words or less", entity.getType().toString().toLowerCase());
+                        userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
+                        userMessage = userMessage.replace("%ENTITY_TYPE%", mobBuilder.getEntityType());
                     } else {
-                        userMessage = String.format("Write a personality and backstory for this particular %s named %s in 50 words or less", entity.getType().toString().toLowerCase(), mobBuilder.getName());
+                        userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
+                        userMessage = userMessage.replace("%ENTITY_TYPE%", mobBuilder.getEntityType());
+                        userMessage = userMessage.replace("%NAME%", mobBuilder.getName());
                     }
 
                     response = tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
@@ -739,7 +731,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 if (mobBuilder.getName() == null) {
 
                     if (backstory != null) {
-                        name = tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
+                        String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
+                        userMessage = userMessage.replace("%BACKSTORY%", mobBuilder.getBackstory());
+                        name = tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
                     }
                     if (mobBuilder.getRawPrompt() != null) {
                         name = originalDisplayName;
@@ -754,6 +748,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             name = name.substring(0, name.length() - 1);
                         }
                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Name generated!");
+                        mobBuilder.setName(name);
                     }
 
                 }
@@ -779,17 +774,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
 
                 // Set temperature
-                Float temperature;
-                if (mobBuilder.getTemperature() != null) {
-                    temperature = mobBuilder.getTemperature();
-                }
-                else {
-                    temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
+                if (mobBuilder.getTemperature() == 0.0f) {
+                    mobBuilder.setTemperature((float) craftGPT.getConfig().getDouble("default-temperature"));
                 }
 
                 // Finalize and save
                 messages.add(prompt);
-                createAIMobData(entity.getUniqueId().toString(), name, temperature, messages, mobBuilder.isDefaultPrompt(), mobBuilder.getEntityType(), backstory);
+                mobBuilder.setMessages(messages);
+                createAIMobData(mobBuilder, entity.getUniqueId().toString());
                 toggleWaitingOnAPI(entity);
                 player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
                 player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
@@ -814,9 +806,17 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 // Generate backstory
                 String promptAppendix = craftGPT.getConfig().getString("auto-spawn.prompt-appendix");
 
-                String systemMessage = "You are writing short but wacky personalities and names for characters in a Minecraft world.";
+                String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
                 String userMessage = "";
-                userMessage = String.format("Write a personality and backstory and name for this particular %s in 50 words or less", entity.getType().toString().toLowerCase());
+                if (aiMob.getName() == null) {
+                    userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
+                    userMessage = userMessage.replace("%ENTITY_TYPE%", aiMob.getEntityType());
+                } else {
+                    userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
+                    userMessage = userMessage.replace("%ENTITY_TYPE%", aiMob.getEntityType());
+                    userMessage = userMessage.replace("%NAME%", aiMob.getName());
+                }
+
                 String backstory = tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
 
                 if (backstory == null) {
@@ -861,7 +861,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
                 // Finalize and save
                 messages.add(prompt);
-                createAIMobData(entity.getUniqueId().toString(), name, temperature, messages, true, aiMob.getEntityType(), backstory);
+                aiMob.setTemperature(temperature);
+                aiMob.setMessages(messages);
+                aiMob.setDefaultPrompt(true);
+                createAIMobData(aiMob, entity.getUniqueId().toString());
                 toggleWaitingOnAPI(entity);
                 craftGPT.getLogger().info( "AI enabled for " + aiMob.getEntityType() + " named " + name + " at " + entity.getLocation());
             }

@@ -11,6 +11,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.command.TabExecutor;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -272,6 +273,9 @@ public class Commands implements TabExecutor {
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is not AI-enabled!");
                                     } else {
                                         craftGPTListener.removeAIMob(player, craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity());
+                                        Entity entity = craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity();
+                                        craftGPT.selectingPlayers.remove(player.getUniqueId());
+                                        craftGPTListener.enterSelecting(player, entity);
                                     }
                                 } else {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
@@ -282,11 +286,15 @@ public class Commands implements TabExecutor {
                                 sayNoPermission(player);
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                    AIMob selection = craftGPT.selectingPlayers.get(player.getUniqueId());
-                                    selection.setName(null);
-                                    selection.setRawPrompt(null);
-                                    selection.setBackstory(null);
-                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "AI mob builder cleared!");
+                                    if (craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "AI mob already created! Use " + ChatColor.RED + "/cg remove" + ChatColor.GRAY + " to remove AI from a mob.");
+                                    }
+                                    else {
+                                        Entity entity = craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity();
+                                        craftGPT.selectingPlayers.remove(player.getUniqueId());
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "AI mob builder cleared!");
+                                        craftGPTListener.enterSelecting(player, entity);
+                                    }
                                 } else {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
                                 }
@@ -450,7 +458,7 @@ public class Commands implements TabExecutor {
                                         } else {
                                             player.sendMessage(CraftGPT.CHAT_PREFIX + "Name: " + ChatColor.GOLD + ChatColor.MAGIC + "ChatGPT");
                                         }
-                                        if (selection.getTemperature() != null) {
+                                        if (selection.getTemperature() != 0.0f) {
                                             player.sendMessage(CraftGPT.CHAT_PREFIX + "Temperature: " + ChatColor.GOLD + selection.getTemperature());
                                         } else {
                                             player.sendMessage(CraftGPT.CHAT_PREFIX + "Temperature: " + ChatColor.GOLD + craftGPT.getConfig().getDouble("default-temperature"));

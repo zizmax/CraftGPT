@@ -51,6 +51,28 @@ auto-spawn:
     - "world_the_end"
     - "world_nether"
 
+# ==== WARNING: Don't touch the settings below unless you know what you're doing. Changing the settings below WILL change the behavior of mob creation and chatting. ====
+prompt:
+  # System prompt used for all AI mobs that don't have a 'rawprompt' set
+  default-system-prompt: "You are a %ENTITY_TYPE% in Minecraft. Your personality is '%BACKSTORY%' All responses must be as a %ENTITY_TYPE%. Do not prefix your responses with your name. Keep responses short."
+
+  # System prompt and user prompts for generating default backstories
+  backstory-writer-system-prompt: "You are writing short but wacky personalities and names for characters in a Minecraft world."
+  backstory-prompt-unnamed: "Write a personality and backstory and name for this particular %ENTITY_TYPE% in 50 words or less"
+  backstory-prompt-named: "Write a personality and backstory for this particular %ENTITY_TYPE% named %NAME% in 50 words or less"
+
+  # System prompt and user prompt for parsing the name from generated backstories
+  name-parser-system-prompt: "You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name."
+  name-parser-prompt: "The backstory is: %BACKSTORY% and the name from the backstory is:"
+
+  # Verb used in player message prompts to indicate chats (versus events). Used in the format: {username} [speak-verb] {message} or "zizmax says hello"
+  speak-verb: "says"
+
+  # Injected into default prompts to instruct mobs which players they are chatting with
+  chatting-instructions: "You are currently chatting with the following players: "
+
+# ==== WARNING: Don't touch the settings above unless you know what you're doing. Changing the settings below WILL change the behavior of mob creation and chatting. ====
+
 
 # +----------------------------------------------------------------------------------------------+ #
 # |                                                                                              | #

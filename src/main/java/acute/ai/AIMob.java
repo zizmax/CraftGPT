@@ -10,14 +10,13 @@ class AIMob {
     private float temperature;
     private Integer tokens;
     private String name;
-    private Entity entity;
+    private transient Entity entity;
     private List<ChatMessage> messages;
     private boolean defaultPrompt;
     private String rawPrompt;
     private String entityType;
     private String backstory;
     private String visibility;
-
 
     public Float getTemperature() {
         return temperature;
