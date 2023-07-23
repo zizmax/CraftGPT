@@ -1,11 +1,14 @@
 package acute.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
+import com.theokanning.openai.client.OpenAiApi;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.service.OpenAiService;
+import okhttp3.OkHttpClient;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -16,18 +19,24 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import retrofit2.Retrofit;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.*;
+
+import static com.theokanning.openai.service.OpenAiService.*;
 
 public final class CraftGPT extends JavaPlugin {
 
@@ -213,12 +222,29 @@ public final class CraftGPT extends JavaPlugin {
             apiKeySet = true;
         }
 
-        openAIService = new OpenAiService(key);
+        // Create HTTP client and OpenAI connection with configurable proxy and timeout
+        ObjectMapper mapper = defaultObjectMapper();
+        OkHttpClient client;
+        if (getConfig().getBoolean("proxy.enabled")) {
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(getConfig().getString("proxy.host"), getConfig().getInt("proxy.port")));
+            client = defaultClient(key, Duration.ofSeconds(getConfig().getInt("timeout")))
+                    .newBuilder()
+                    .proxy(proxy)
+                    .build();
+            getLogger().info("Connecting to OpenAI via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
 
-        getLogger().info("Connecting to OpenAI...");
+        } else {
+            client = defaultClient(key, Duration.ofSeconds(getConfig().getInt("timeout")))
+                    .newBuilder()
+                    .build();
+            getLogger().info("Connecting to OpenAI...");
+        }
+        Retrofit retrofit = defaultRetrofit(client, mapper);
+        OpenAiApi api = retrofit.create(OpenAiApi.class);
+        openAIService = new OpenAiService(api);
+
+
         long start = System.currentTimeMillis();
-
-
         new BukkitRunnable() {
             @Override
             public void run() {
@@ -226,17 +252,13 @@ public final class CraftGPT extends JavaPlugin {
                 if (response == null) {
                     getLogger().severe("Tried 3 times and couldn't connect to OpenAI for the error(s) printed above!");
                     getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
-
                 } else {
                     long end = System.currentTimeMillis();
                     getLogger().info("Connected to OpenAI!" + " (" +  ((end-start) / 1000f) + "s)");
                     apiConnected = true;
                 }
-
             }
-        }.runTask(this);
-
-
+        }.runTaskAsynchronously(this);
     }
 
     public void writeData(CraftGPT craftGPT) {

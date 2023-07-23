@@ -6,7 +6,7 @@
 
     <groupId>acute.ai</groupId>
     <artifactId>CraftGPT</artifactId>
-    <version>0.1.15</version>
+    <version>0.1.16</version>
     <packaging>jar</packaging>
 
     <name>CraftGPT</name>
@@ -51,11 +51,10 @@
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <exclude>module-info.class</exclude>
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
-                                        <exlcude>META-INF/LICENSE</exlcude>
-                                        <exclude>META-INF/NOTICE</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
@@ -115,6 +114,11 @@
             <artifactId>placeholderapi</artifactId>
             <version>2.11.3</version>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.14.2</version>
         </dependency>
     </dependencies>
 </project>
