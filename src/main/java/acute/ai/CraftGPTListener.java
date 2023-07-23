@@ -89,7 +89,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public String getMobName(Entity entity) {
         if (entity instanceof Player || entity.hasMetadata("NPC")) {
-            return entity.getCustomName();
+            return entity.getName();
         }
         String name = entity.getType().toString();
         name = name.substring(0,1).toUpperCase() + name.substring(1).toLowerCase();
@@ -603,15 +603,8 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    public void createAIMobData(String uuid, String name, float temperature, List<ChatMessage> messages, boolean defaultPrompt, String entityType, String backstory) {
-        AIMob aiMob = new AIMob();
-        aiMob.setName(name);
-        aiMob.setTokens(0);
-        aiMob.setTemperature(temperature);
-        aiMob.setMessages(messages);
-        aiMob.setDefaultPrompt(defaultPrompt);
-        aiMob.setEntityType(entityType);
-        aiMob.setBackstory(backstory);
+    public void createAIMobData(AIMob aiMob, String uuid) {
+        craftGPT.getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
         craftGPT.craftGPTData.put(uuid, aiMob);
         craftGPT.writeData(craftGPT);
     }
@@ -740,7 +733,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     if (backstory != null) {
                         String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
                         userMessage = userMessage.replace("%BACKSTORY%", mobBuilder.getBackstory());
-                        craftGPT.getLogger().info(userMessage);
                         name = tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
                     }
                     if (mobBuilder.getRawPrompt() != null) {
@@ -756,6 +748,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             name = name.substring(0, name.length() - 1);
                         }
                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Name generated!");
+                        mobBuilder.setName(name);
                     }
 
                 }
@@ -781,17 +774,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
 
                 // Set temperature
-                Float temperature;
-                if (mobBuilder.getTemperature() != null) {
-                    temperature = mobBuilder.getTemperature();
-                }
-                else {
-                    temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
+                if (mobBuilder.getTemperature() == 0.0f) {
+                    mobBuilder.setTemperature((float) craftGPT.getConfig().getDouble("default-temperature"));
                 }
 
                 // Finalize and save
                 messages.add(prompt);
-                createAIMobData(entity.getUniqueId().toString(), name, temperature, messages, mobBuilder.isDefaultPrompt(), mobBuilder.getEntityType(), backstory);
+                mobBuilder.setMessages(messages);
+                createAIMobData(mobBuilder, entity.getUniqueId().toString());
                 toggleWaitingOnAPI(entity);
                 player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
                 player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
@@ -871,7 +861,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
                 // Finalize and save
                 messages.add(prompt);
-                createAIMobData(entity.getUniqueId().toString(), name, temperature, messages, true, aiMob.getEntityType(), backstory);
+                aiMob.setTemperature(temperature);
+                aiMob.setMessages(messages);
+                aiMob.setDefaultPrompt(true);
+                createAIMobData(aiMob, entity.getUniqueId().toString());
                 toggleWaitingOnAPI(entity);
                 craftGPT.getLogger().info( "AI enabled for " + aiMob.getEntityType() + " named " + name + " at " + entity.getLocation());
             }
