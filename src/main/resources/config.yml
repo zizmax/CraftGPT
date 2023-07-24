@@ -42,6 +42,9 @@ proxy: # Supports HTTP proxies. Do not enable/configure unless your internet acc
 # In-game interaction settings
 interaction-radius: 30 # Setting this too high will cause lag!
 
+# Prefix settings (you can set prefix per individual AI mob using /cg prefix [prefix]
+default-prefix: "<%NAME%>" # Supports '&' color codes. You can configure messages color by adding a color code at the end.
+
 # Auto-spawn settings
 # With this enabled, all mobs that spawn naturally in the below worlds will have a % chance of becoming AI-enabled
 auto-spawn:
@@ -51,6 +54,7 @@ auto-spawn:
   # Any string in prompt-appendix will be appended to the prompt/personality of EVERY auto-spawned mob
   # Use it for details about your server or world that you want the mobs to know
   prompt-appendix: "" # Leave blank for personalities to be completely random
+  default-prefix: "<%NAME%>" # Supports '&' color codes. You can configure messages color by adding a color code at the end. (this prefix will be used for auto-spawn mobs)
   worlds:
     - "world"
     - "world_the_end"

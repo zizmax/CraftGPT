@@ -773,9 +773,13 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
                 }
 
-                // Set temperature
+                // Set temperature and prefix
                 if (mobBuilder.getTemperature() == 0.0f) {
                     mobBuilder.setTemperature((float) craftGPT.getConfig().getDouble("default-temperature"));
+                }
+
+                if (mobBuilder.getPrefix() == null) {
+                    mobBuilder.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix")));
                 }
 
                 // Finalize and save
@@ -855,8 +859,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
                 }
 
-                // Set temperature
+                // Set temperature and prefix
                 Float temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
+                aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("auto-spawn.default-prefix")));
 
 
                 // Finalize and save
@@ -1043,12 +1048,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 }
                             }
                         }
+                        String prefix = aiMob.getPrefix().replace("%NAME%", aiMob.getName()) + " ";
+
 
                         if (chatCompletions == null || chatMessageResponse == null) {
                             toggleWaitingOnAPI(entity);
 
                             for (Player recipient : recipients) {
-                                recipient.sendMessage(String.format("<%s> ", aiMob.getName()) + ChatColor.RED + "API error! Try again momentarily.");
+                                recipient.sendMessage(prefix + ChatColor.RED + "API error! Try again momentarily.");
                             }
 
                         } else {
@@ -1056,7 +1063,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             ChatMessage finalChatMessageResponse = chatMessageResponse;
 
                             for (Player recipient : recipients) {
-                                recipient.sendMessage(String.format("<%s> ", aiMob.getName()) + finalChatMessageResponse.getContent());
+                                recipient.sendMessage(prefix + finalChatMessageResponse.getContent());
                             }
 
                             chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
