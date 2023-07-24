@@ -32,7 +32,7 @@ public class Commands implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clear", "save", "displayname", "visibility");
+        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clear", "save", "displayname", "visibility", "prefix");
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
@@ -170,6 +170,28 @@ public class Commands implements TabExecutor {
                             ItemStack map = new ItemStack(Material.FILLED_MAP, 1);
                             MapMeta meta = (MapMeta) map.getItemMeta();
                             //fixme Should probably remove
+                        } else if (args[0].equals("prefix")) {
+                            if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                String prefix = "";
+                                for (int i = 1; i < args.length - 1; i++) {
+                                    prefix = prefix + args[i] + " ";
+                                }
+                                prefix = prefix + args[args.length - 1];
+                                prefix = ChatColor.translateAlternateColorCodes('&', prefix);
+                                craftGPT.selectingPlayers.get(player.getUniqueId()).setPrefix(prefix);
+                                if (prefix.contains("%NAME%")) {
+                                    if (craftGPT.selectingPlayers.get(player.getUniqueId()).getName() != null) {
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix.replace("%NAME%", craftGPT.selectingPlayers.get(player.getUniqueId()).getName()));
+                                    } else {
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix.replace("%NAME%", "{NAME}"));
+                                    }
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix);
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "WARNING: %NAME% not set in prefix so mob's name will not appear!");
+                                }
+                            } else {
+                                player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
+                            }
                         } else if (args[0].equals("visibility")) {
                             if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                 AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());

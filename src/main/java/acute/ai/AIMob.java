@@ -17,6 +17,7 @@ class AIMob {
     private String entityType;
     private String backstory;
     private String visibility;
+    private String prefix;
 
     public Float getTemperature() {
         return temperature;
@@ -93,5 +94,9 @@ class AIMob {
     public String getVisibility() {return visibility; }
 
     public void setVisibility(String visibility) {this.visibility = visibility; }
+
+    public String getPrefix() {return prefix; }
+
+    public void setPrefix(String prefix) {this.prefix = prefix; }
 
 }
