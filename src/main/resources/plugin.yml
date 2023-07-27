@@ -1,7 +1,7 @@
 name: CraftGPT
 version: '${project.version}'
 main: acute.ai.CraftGPT
-api-version: 1.19
+api-version: 1.16
 authors: [ zizmax ]
 description: AI mobs in Minecraft
 softdepend: [PlaceholderAPI]
