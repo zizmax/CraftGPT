@@ -229,7 +229,7 @@ public class Commands implements TabExecutor {
                             if (!player.hasPermission("craftgpt.wand")) {
                                 sayNoPermission(player);
                             } else {
-                                ItemStack wand = new ItemStack(Material.SPYGLASS, 1);
+                                ItemStack wand = new ItemStack(Material.GOLDEN_HOE, 1);
                                 ItemMeta wandMeta = wand.getItemMeta();
                                 wandMeta.setDisplayName(CraftGPT.CHAT_PREFIX + "Magic Wand");
                                 wandMeta.getPersistentDataContainer().set(craftGPT.magicWandKey, PersistentDataType.STRING, "shhh!");
