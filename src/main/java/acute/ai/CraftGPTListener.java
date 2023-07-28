@@ -420,7 +420,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 for (Entity entity : player.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
                     if (entity instanceof LivingEntity && entity.getUniqueId().equals(entityUUID)) {
                         if (!isWaitingOnAPI(entity)) {
-                            subject = String.format(craftGPT.getConfig().getString("player-event-prefix"), player.getDisplayName());
+                            subject = String.format(craftGPT.getConfig().getString("player-event-prefix"), player.getName());
                             prepareEventMessageResponse(subject + " " + eventMessage, entity, Arrays.asList(player), new HashSet<>(getPlayersWithinInteractionRadius(entity.getLocation())));
                             if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
                                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + name));
@@ -440,7 +440,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(CraftGPT.CHAT_PREFIX + ChatColor.RED + "FAILED (" + roll + "): " + name));
                 }
             }
-            if (craftGPT.debug) craftGPT.getLogger().info(String.format("[%s]: %s | %s", player.getDisplayName(), name, eventMessage));
+            if (craftGPT.debug) craftGPT.getLogger().info(String.format("[%s]: %s | %s", player.getName(), name, eventMessage));
 
         }
     }
@@ -614,7 +614,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         List<Player> playersChattingWithEntity = getPlayersChattingWithEntity(entity);
         List<String> chattingNames= new ArrayList<>();
         for (Player player : playersChattingWithEntity) {
-            chattingNames.add(player.getDisplayName());
+            chattingNames.add(player.getName());
         }
         String namesListString = "";
         for (String name : chattingNames) {
@@ -791,7 +791,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
                 entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
                 entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
-                craftGPT.getLogger().info(player.getDisplayName() + " enabled AI for " + mobBuilder.getEntityType() + " named " + name + " at " + entity.getLocation());
+                craftGPT.getLogger().info(player.getName() + " enabled AI for " + mobBuilder.getEntityType() + " named " + name + " at " + entity.getLocation());
             }
         });
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Enabling AI for %s...", getMobName(entity)));
@@ -981,7 +981,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public boolean prepareChatMessageResponse(String chatMessage, Entity entity, Player player, Set<Player> recipients) {
-        ChatMessage chatMessageToSend = new ChatMessage(ChatMessageRole.USER.value(), player.getDisplayName() + " says " + chatMessage);
+        ChatMessage chatMessageToSend = new ChatMessage(ChatMessageRole.USER.value(), player.getName() + " " + craftGPT.getConfig().get("prompt.speak-verb") + " " + chatMessage);
         if (handleMessageResponse(chatMessageToSend, entity, Arrays.asList(player), recipients)) return true;
         else return false;
     }
@@ -1048,6 +1048,8 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 }
                             }
                         }
+                        if (aiMob.getPrefix() == null) aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix"))); // Catch mobs that were created before prefix functionality
+
                         String prefix = aiMob.getPrefix().replace("%NAME%", aiMob.getName()) + " ";
 
 
