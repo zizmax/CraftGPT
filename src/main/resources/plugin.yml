@@ -1,7 +1,7 @@
 name: CraftGPT
 version: '${project.version}'
 main: acute.ai.CraftGPT
-api-version: 1.19
+api-version: 1.13
 authors: [ zizmax ]
 description: AI mobs in Minecraft
 softdepend: [PlaceholderAPI]
@@ -13,4 +13,40 @@ commands:
 
 permissions:
   craftgpt.*:
-    description:
+    description: All CraftGPT permissions
+  craftgpt.help:
+    description: Help command
+  craftgpt.reload:
+    description: Reload command
+  craftgpt.save:
+    description: Save command
+  craftgpt.wand:
+    description: Wand command
+  craftgpt.create:
+    description: Create command
+  craftgpt.remove:
+    description: Remove command
+  craftgpt.clear:
+    description: Clear command
+  craftgpt.name:
+    description: Name command
+  craftgpt.temperature:
+    description: Temperature command
+  craftgpt.backstory:
+    description: Backstory command
+  craftgpt.rawprompt:
+    description: Rawprompt command
+  craftgpt.info:
+    description: Info command
+  craftgpt.debug:
+    description: Debug command
+  craftgpt.usage:
+    description: Usage command
+  craftgpt.dryrun:
+    description: Dryrun command
+  craftgpt.usage-limit.low:
+    description: Low usage allowance
+  craftgpt.usage-limit.medium:
+    description: Medium usage allowance
+  craftgpt.usage-limit.high:
+    description: High usage allowance
