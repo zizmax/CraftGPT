@@ -13,6 +13,7 @@ import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.NamespacedKey;
+import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
@@ -33,6 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.*;
 
@@ -195,7 +197,10 @@ public final class CraftGPT extends JavaPlugin {
             public void run() {
                 try {
                     getUsageFile().save(usageFile);
+                    getUsageFile().load(usageFile);
                 } catch (IOException e) {
+                    throw new RuntimeException(e);
+                } catch (InvalidConfigurationException e) {
                     throw new RuntimeException(e);
                 }
             }
@@ -359,7 +364,9 @@ public final class CraftGPT extends JavaPlugin {
     public double getPlayerUsagePercentage(Player player) {
         long limit = CraftGPTListener.getTokenLimit(player);
         long usage = getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage");
-        return 100.0 * usage / limit;
+        DecimalFormat dfZero = new DecimalFormat("0.00");
+        return Double.valueOf(dfZero.format(100.0 * usage / limit));
+
     }
 
 

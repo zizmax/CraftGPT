@@ -446,7 +446,7 @@ public class Commands implements TabExecutor {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
                                 }
                             }
-                        } else if (args[0].equals("clearUsage")) {
+                        } else if (args[0].equals("clearUsageFile")) {
                             if (!player.hasPermission("craftgpt.clear-usage")) {
                                 sayNoPermission(player);
                             } else {
@@ -470,7 +470,7 @@ public class Commands implements TabExecutor {
                             if (!player.hasPermission("craftgpt.usage")) {
                                 sayNoPermission(player);
                             } else {
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + craftGPT.getPlayerUsageProgressBar(player) + "(" + craftGPT.getPlayerUsagePercentage(player) + ")%");
+                                player.sendMessage(CraftGPT.CHAT_PREFIX + craftGPT.getPlayerUsageProgressBar(player) + " (" + craftGPT.getPlayerUsagePercentage(player) + ")%");
                             }
                         } else if (args[0].equals("dryrun")) {
                             if (!player.hasPermission("craftgpt.dryrun")) {
