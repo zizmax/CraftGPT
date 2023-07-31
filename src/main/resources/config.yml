@@ -38,6 +38,7 @@ proxy: # Supports HTTP proxies. Do not enable/configure unless your internet acc
   enabled: false
   host: "0.0.0.0"
   port: 1000
+  http: true # Set to false for SOCKS proxy.
   authentication:
     enabled: false
     username: "user"
