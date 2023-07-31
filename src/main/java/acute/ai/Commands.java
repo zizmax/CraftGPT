@@ -32,7 +32,7 @@ public class Commands implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clear", "save", "displayname", "visibility", "prefix");
+        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "clearUsageFile");
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
@@ -75,7 +75,7 @@ public class Commands implements TabExecutor {
             sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg reload" + ChatColor.GRAY + " Reload config.yml and plugin data");
             sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg create" + ChatColor.GRAY + " Enable AI for selected mob");
             sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg remove" + ChatColor.GRAY + " Remove AI for selected mob");
-            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg clear" + ChatColor.GRAY + " Clear mob-builder settings");
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "/cg clearMobBuilder" + ChatColor.GRAY + " Clear mob-builder settings");
 
         }
     }
@@ -90,8 +90,7 @@ public class Commands implements TabExecutor {
             if (craftGPT.debug) {
                 sender.sendMessage(CraftGPT.CHAT_PREFIX + "Debug mode enabled!");
             }
-            craftGPT.createUsageFile();
-            craftGPT.saveUsageFileAsync();
+            craftGPT.createUsageFile(false);
             craftGPT.writeData(craftGPT);
             craftGPT.readData(craftGPT);
             craftGPT.enableOpenAI();
@@ -303,7 +302,7 @@ public class Commands implements TabExecutor {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
                                 }
                             }
-                        } else if (args[0].equals("clear")) {
+                        } else if (args[0].equalsIgnoreCase("clearMobBuilder")) {
                             if (!player.hasPermission("craftgpt.clear")) {
                                 sayNoPermission(player);
                             } else {
@@ -447,6 +446,13 @@ public class Commands implements TabExecutor {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
                                 }
                             }
+                        } else if (args[0].equals("clearUsage")) {
+                            if (!player.hasPermission("craftgpt.clear-usage")) {
+                                sayNoPermission(player);
+                            } else {
+                                craftGPT.createUsageFile(true);
+                                player.sendMessage(CraftGPT.CHAT_PREFIX + "Usage file cleared and reloaded!");
+                            }
                         } else if (args[0].equals("debug")) {
                             if (!player.hasPermission("craftgpt.debug")) {
                                 sayNoPermission(player);
@@ -516,7 +522,6 @@ public class Commands implements TabExecutor {
                 }
             }
         }
-
         return true;
     }
 

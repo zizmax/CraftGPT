@@ -93,7 +93,9 @@ prompt:
 
 # Example: Use permission 'craftgpt.usage-limit.high' to set player's token limit to the 'high' category
 # If a player does not have a specific usage-limit permission, they will inherit the default-usage-limit
-# If a player has multiple usage-limit permissions, the limit will be set to the lowest permission the player has
+# If a player has multiple usage-limit permissions, the limit will be set to the highest permission the player has
+# Maximum value for any limit is 9223372036854775807. Anything higher than this will break the plugin.
+# Op players have the maximum value
 
 default-usage-limit: 25000
 global-usage-limit: 3000000 # Maximum token usage for the entire server

@@ -112,7 +112,7 @@ public final class CraftGPT extends JavaPlugin {
 
 
         // Save/read usage.yml
-        createUsageFile();
+        createUsageFile(false);
 
         // Load data.json
         craftGPTData = readData(this);
@@ -203,11 +203,11 @@ public final class CraftGPT extends JavaPlugin {
     }
 
 
-    public void createUsageFile() {
+    public void createUsageFile(boolean overwrite) {
         usageFile = new File(getDataFolder(), "usage.yml");
-        if (!usageFile.exists()) {
+        if (!usageFile.exists() || overwrite) {
             usageFile.getParentFile().mkdirs();
-            saveResource("usage.yml", false);
+            saveResource("usage.yml", true);
         }
         this.usageFileConfig = YamlConfiguration.loadConfiguration(usageFile);
     }
@@ -357,8 +357,8 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public double getPlayerUsagePercentage(Player player) {
-        int limit = CraftGPTListener.getTokenLimit(player);
-        int usage = getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage");
+        long limit = CraftGPTListener.getTokenLimit(player);
+        long usage = getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage");
         return 100.0 * usage / limit;
     }
 

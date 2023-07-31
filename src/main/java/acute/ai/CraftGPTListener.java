@@ -892,11 +892,11 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void enterChat(Player player, Entity entity) {
-        if (craftGPT.getUsageFile().getInt("global-total-usage") > craftGPT.getConfig().getInt("global-usage-limit")) {
+        if (craftGPT.getUsageFile().getLong("global-total-usage") > craftGPT.getConfig().getLong("global-usage-limit")) {
             player.sendMessage(CraftGPT.CHAT_PREFIX + "Server has reached global chat usage limit!");
             return;
         }
-        if (craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) {
+        if (craftGPT.getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) {
             player.sendMessage(CraftGPT.CHAT_PREFIX + "You have reached your usage limit!");
             return;
         }
@@ -1097,15 +1097,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 }
                                 for (Player player : associatedPlayers) {
                                     String path = "players." + player.getUniqueId() + ".total-usage";
-                                    craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getInt(path) + perPlayerUsage);
+                                    craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getLong(path) + perPlayerUsage);
                                     if (craftGPT.debug) {
-                                        craftGPT.getLogger().info(String.format("= %s current usage: %s", player.getDisplayName(), craftGPT.getUsageFile().getInt(path)));
-                                        craftGPT.getLogger().info(String.format("= %s now: %s", player.getDisplayName(), craftGPT.getUsageFile().getInt(path) + perPlayerUsage));
+                                        craftGPT.getLogger().info(String.format("= %s current usage: %s", player.getDisplayName(), craftGPT.getUsageFile().getLong(path)));
+                                        craftGPT.getLogger().info(String.format("= %s now: %s", player.getDisplayName(), craftGPT.getUsageFile().getLong(path) + perPlayerUsage));
                                     }
                                 }
 
                                 // Global usage
-                                craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getInt("global-total-usage") + usage.getTotalTokens());
+                                craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getLong("global-total-usage") + usage.getTotalTokens());
 
                                 if (craftGPT.debug) {
                                     craftGPT.getLogger().info("====== END ======");
@@ -1229,19 +1229,22 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         return nearbyPlayers;
     }
 
-    public static int getTokenLimit(Player player) {
-        int limit;
-        if (player.hasPermission("usage-limit.low")) {
-            limit = craftGPT.getConfig().getInt("usage-limit.low.max");
-        }
-        else if (player.hasPermission("usage-limit.medium")) {
-            limit = craftGPT.getConfig().getInt("usage-limit.medium.max");
+    public static long getTokenLimit(Player player) {
+        long limit;
+        if (player.isOp()) {
+            limit = Long.MAX_VALUE;
         }
         else if (player.hasPermission("usage-limit.high")) {
-            limit = craftGPT.getConfig().getInt("usage-limit.high.max");
+            limit = craftGPT.getConfig().getLong("usage-limit.low.max");
+        }
+        else if (player.hasPermission("usage-limit.medium")) {
+            limit = craftGPT.getConfig().getLong("usage-limit.medium.max");
+        }
+        else if (player.hasPermission("usage-limit.low")) {
+            limit = craftGPT.getConfig().getLong("usage-limit.high.max");
         }
         else {
-            limit = craftGPT.getConfig().getInt("default-usage-limit");
+            limit = craftGPT.getConfig().getLong("default-usage-limit");
         }
         return limit;
     }
@@ -1260,14 +1263,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     return;
                 }
 
-                if (craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) {
+                if (craftGPT.getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) {
                     event.setCancelled(true);
                     player.sendMessage(CraftGPT.CHAT_PREFIX + "You have reached your usage limit!");
                     exitChat(player);
                     return;
                 }
 
-                if (craftGPT.getUsageFile().getInt("global-total-usage") > craftGPT.getConfig().getInt("global-usage-limit")) {
+                if (craftGPT.getUsageFile().getLong("global-total-usage") > craftGPT.getConfig().getLong("global-usage-limit")) {
                     event.setCancelled(true);
                     player.sendMessage(CraftGPT.CHAT_PREFIX + "Server has reached its usage limit!");
                     exitChat(player);

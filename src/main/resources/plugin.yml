@@ -44,6 +44,8 @@ permissions:
     description: Usage command
   craftgpt.dryrun:
     description: Dryrun command
+  craftgpt.clear-usage:
+    description: ClearUsage command
   craftgpt.usage-limit.low:
     description: Low usage allowance
   craftgpt.usage-limit.medium:
