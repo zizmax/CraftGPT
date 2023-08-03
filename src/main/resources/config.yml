@@ -175,6 +175,9 @@ events:
   player-leash-entity:
     chance: 20
     message: "just attached a leash to a %s"
+  player-approach-npc:
+    chance: 100 # Chance isn't really relevant here because the approach event fires everytime a player moves
+    message: "just walked up next to you"
 
 # Events where player is damaged by something
   player-hurt-suffocation:

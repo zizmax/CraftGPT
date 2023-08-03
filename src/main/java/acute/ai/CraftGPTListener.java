@@ -20,6 +20,7 @@ import org.spigotmc.event.entity.EntityMountEvent;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 
 public class CraftGPTListener implements org.bukkit.event.Listener {
@@ -502,6 +503,36 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
         else {
             enterSelecting(player, entity);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if ((event.getFrom().getBlockX() != (event.getTo().getBlockX()) ||
+                event.getFrom().getBlockZ() != event.getTo().getBlockZ() ||
+                event.getFrom().getBlockY() != event.getTo().getBlockY())) {
+            player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1);
+            double roll = random.nextDouble();
+            //double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
+            double chance = .2;
+            if (roll <= chance) {
+                player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 2);
+
+                List<Entity> sortedNearbyEntities = player.getNearbyEntities(20, 20, 20).stream()
+                        .filter(entity -> Util.isAIMob(entity))
+                        .sorted(Comparator.comparingDouble(entity -> entity.getLocation().distance(player.getLocation())))
+                        .collect(Collectors.toList());
+
+                for (Entity entity : sortedNearbyEntities) {
+                    AIMob aiMob = Util.getAIMob(entity);
+                    player.sendMessage(aiMob.getName() + ": " + entity.getLocation().distance(player.getLocation()));
+                }
+                if (!Util.isChatting(player)) {
+                    enterChat(player, sortedNearbyEntities.get(0));
+                    handlePlayerEventReaction(player, "player-approach-npc", craftGPT.getConfig().getString("events.player-approach-npc.message"));
+                }
+            }
         }
     }
 
@@ -1326,5 +1357,4 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             }
         }
     }
-
 }
