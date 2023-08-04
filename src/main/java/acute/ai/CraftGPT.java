@@ -86,6 +86,9 @@ public final class CraftGPT extends JavaPlugin {
         getLogger().info("| * Enjoying the plugin? Leave a review and share with a friend! |");
         getLogger().info("+----------------------------------------------------------------+");
 
+        // Initialize Util
+        Util.setCraftGPT(this);
+
         // Register events
         getServer().getPluginManager().registerEvents(new CraftGPTListener(this), this);
 

@@ -509,28 +509,27 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        if ((event.getFrom().getBlockX() != (event.getTo().getBlockX()) ||
+        if (craftGPT.getConfig().getBoolean("auto-chat.enabled") && (event.getFrom().getBlockX() != (event.getTo().getBlockX()) ||
                 event.getFrom().getBlockZ() != event.getTo().getBlockZ() ||
                 event.getFrom().getBlockY() != event.getTo().getBlockY())) {
-            player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 1);
             double roll = random.nextDouble();
-            //double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
             double chance = .2;
             if (roll <= chance) {
-                player.playSound(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1, 2);
 
-                List<Entity> sortedNearbyEntities = player.getNearbyEntities(20, 20, 20).stream()
+                double radius = craftGPT.getConfig().getDouble("auto-chat.radius");
+
+                List<Entity> sortedNearbyEntities = player.getNearbyEntities(radius, radius, radius).stream()
                         .filter(entity -> Util.isAIMob(entity))
                         .sorted(Comparator.comparingDouble(entity -> entity.getLocation().distance(player.getLocation())))
                         .collect(Collectors.toList());
 
-                for (Entity entity : sortedNearbyEntities) {
+                if (!Util.isChatting(player) && sortedNearbyEntities.size() > 0) {
+                    Entity entity = sortedNearbyEntities.get(0);
                     AIMob aiMob = Util.getAIMob(entity);
-                    player.sendMessage(aiMob.getName() + ": " + entity.getLocation().distance(player.getLocation()));
-                }
-                if (!Util.isChatting(player)) {
-                    enterChat(player, sortedNearbyEntities.get(0));
-                    handlePlayerEventReaction(player, "player-approach-npc", craftGPT.getConfig().getString("events.player-approach-npc.message"));
+                    if (aiMob.isAutoChat()) {
+                        enterChat(player, entity);
+                        handlePlayerEventReaction(player, "player-approach-npc", craftGPT.getConfig().getString("events.player-approach-npc.message"));
+                    }
                 }
             }
         }
@@ -635,7 +634,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void createAIMobData(AIMob aiMob, String uuid) {
-        craftGPT.getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
+        if (craftGPT.debug) craftGPT.getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
         craftGPT.craftGPTData.put(uuid, aiMob);
         craftGPT.writeData(craftGPT);
     }
@@ -804,13 +803,17 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
                 }
 
-                // Set temperature and prefix
+                // Set temperature, prefix, and auto-chat
                 if (mobBuilder.getTemperature() == 0.0f) {
                     mobBuilder.setTemperature((float) craftGPT.getConfig().getDouble("default-temperature"));
                 }
 
                 if (mobBuilder.getPrefix() == null) {
                     mobBuilder.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix")));
+                }
+
+                if (mobBuilder.isAutoChat() == null) {
+                    mobBuilder.setAutoChat(craftGPT.getConfig().getBoolean("auto-chat.default"));
                 }
 
                 // Finalize and save
@@ -890,9 +893,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
                 }
 
-                // Set temperature and prefix
+                // Set temperature, prefix and auto-chat
                 Float temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
                 aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("auto-spawn.default-prefix")));
+                aiMob.setAutoChat(craftGPT.getConfig().getBoolean("auto-spawn.auto-chat-default"));
 
 
                 // Finalize and save

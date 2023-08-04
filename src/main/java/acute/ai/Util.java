@@ -5,7 +5,10 @@ import org.bukkit.entity.Player;
 
 public class Util {
     private static CraftGPT craftGPT;
-    public Util(CraftGPT craftGPT) {this.craftGPT = craftGPT;}
+
+    public static void setCraftGPT(CraftGPT craftGPT) {
+        Util.craftGPT = craftGPT;
+    }
     public static boolean isAIMob(Entity entity) {
         if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) return true;
         else return false;
