@@ -2,6 +2,7 @@ package acute.ai;
 
 import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.Usage;
+import com.theokanning.openai.completion.CompletionRequest;
 import com.theokanning.openai.completion.chat.*;
 import io.reactivex.Flowable;
 import net.md_5.bungee.api.ChatMessageType;
@@ -13,6 +14,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
+import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -125,7 +128,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     @EventHandler
     public void onEntitySpawn(CreatureSpawnEvent event) {
-        if (event.getSpawnReason().equals(CreatureSpawnEvent.SpawnReason.NATURAL)) {
+
+        // craftGPT.getServer().broadcastMessage(event.getEntityType() + " spawned: " + event.getSpawnReason());
+        if (false == true && event.getSpawnReason().equals(CreatureSpawnEvent.SpawnReason.NATURAL)) {
             if (craftGPT.getConfig().getBoolean("auto-spawn.enabled")) {
                 List<String> worldNames = craftGPT.getConfig().getStringList("auto-spawn.worlds");
                 List<World> worlds = new ArrayList<>();
@@ -141,6 +146,39 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
             }
         }
+    }
+
+    @EventHandler
+    public void onChunkLoad(ChunkLoadEvent event) {
+        //craftGPT.getServer().broadcastMessage("chunk loaded!");
+        Chunk chunk = event.getChunk();
+        Entity[] entities = chunk.getEntities();
+        craftGPT.getServer().broadcastMessage("C: " + entities.length);
+        craftGPT.getServer().broadcastMessage("C: (" + event.getChunk().getX() + ", " + event.getChunk().getZ() + ")");
+        craftGPT.getServer().broadcastMessage("C: " + event.getWorld().getHighestBlockAt(event.getChunk().getBlock(8, 128, 8).getLocation()).getLocation().distance(craftGPT.getServer().getPlayer("zizmax").getLocation()));
+        for (Entity entity : entities) {
+            double roll = random.nextDouble();
+            double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
+            if (roll <= chance) {
+                //autoCreateAIMob(entity);
+            }
+        }
+    }
+
+    @EventHandler
+    public void onEntitiesLoad(EntitiesLoadEvent event) {
+        List<Entity> entities = event.getEntities();
+        craftGPT.getServer().broadcastMessage("E: " + entities.size());
+        craftGPT.getServer().broadcastMessage("E: (" + event.getChunk().getX() + ", " + event.getChunk().getZ() + ")");
+        craftGPT.getServer().broadcastMessage("E: " + event.getWorld().getHighestBlockAt(event.getChunk().getBlock(8, 128, 8).getLocation()).getLocation().distance(craftGPT.getServer().getPlayer("zizmax").getLocation()));
+        for (Entity entity : entities) {
+            double roll = random.nextDouble();
+            double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
+            if (roll <= chance) {
+                //autoCreateAIMob(entity);
+            }
+        }
+        event.getChunk().getPersistentDataContainer();
     }
 
     @EventHandler
@@ -526,7 +564,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 if (!Util.isChatting(player) && sortedNearbyEntities.size() > 0) {
                     Entity entity = sortedNearbyEntities.get(0);
                     AIMob aiMob = Util.getAIMob(entity);
-                    if (aiMob.isAutoChat()) {
+                    if (aiMob.isAutoChat() != null && aiMob.isAutoChat()) {
                         enterChat(player, entity);
                         handlePlayerEventReaction(player, "player-approach-npc", craftGPT.getConfig().getString("events.player-approach-npc.message"));
                     }
@@ -893,9 +931,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
                 }
 
-                // Set temperature, prefix and auto-chat
+                // Set temperature, prefix, entity, and auto-chat
                 Float temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
                 aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("auto-spawn.default-prefix")));
+                aiMob.setEntity(entity);
                 aiMob.setAutoChat(craftGPT.getConfig().getBoolean("auto-spawn.auto-chat-default"));
 
 
@@ -907,6 +946,12 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 createAIMobData(aiMob, entity.getUniqueId().toString());
                 toggleWaitingOnAPI(entity);
                 craftGPT.getLogger().info( "AI enabled for " + aiMob.getEntityType() + " named " + name + " at " + entity.getLocation());
+                Bukkit.getScheduler().runTask(craftGPT, new Runnable() {
+                    @Override
+                    public void run() {
+                        craftGPT.getServer().getPlayer("zizmax").teleport(aiMob.getEntity().getLocation());
+                    }
+                });
             }
         });
         toggleWaitingOnAPI(entity);
