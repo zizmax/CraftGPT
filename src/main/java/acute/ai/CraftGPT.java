@@ -44,6 +44,8 @@ public final class CraftGPT extends JavaPlugin {
 
     public NamespacedKey magicWandKey = new NamespacedKey(this, "secret");
 
+    public NamespacedKey autoSpawnChunkFlagKey = new NamespacedKey(this, "chunk-flag");
+
     public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;

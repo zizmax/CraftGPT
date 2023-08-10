@@ -2,10 +2,12 @@ package acute.ai;
 
 import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.Usage;
-import com.theokanning.openai.completion.CompletionRequest;
 import com.theokanning.openai.completion.chat.*;
 import io.reactivex.Flowable;
 import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang3.text.WordUtils;
 import org.bukkit.*;
@@ -14,7 +16,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
-import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -130,6 +131,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void onEntitySpawn(CreatureSpawnEvent event) {
 
         // craftGPT.getServer().broadcastMessage(event.getEntityType() + " spawned: " + event.getSpawnReason());
+        //fixme disabled until I add config options for this type of auto-spawn
         if (false == true && event.getSpawnReason().equals(CreatureSpawnEvent.SpawnReason.NATURAL)) {
             if (craftGPT.getConfig().getBoolean("auto-spawn.enabled")) {
                 List<String> worldNames = craftGPT.getConfig().getStringList("auto-spawn.worlds");
@@ -149,37 +151,55 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     @EventHandler
-    public void onChunkLoad(ChunkLoadEvent event) {
-        //craftGPT.getServer().broadcastMessage("chunk loaded!");
+    public void onEntitiesLoad(EntitiesLoadEvent event) {
+
         Chunk chunk = event.getChunk();
-        Entity[] entities = chunk.getEntities();
-        craftGPT.getServer().broadcastMessage("C: " + entities.length);
-        craftGPT.getServer().broadcastMessage("C: (" + event.getChunk().getX() + ", " + event.getChunk().getZ() + ")");
-        craftGPT.getServer().broadcastMessage("C: " + event.getWorld().getHighestBlockAt(event.getChunk().getBlock(8, 128, 8).getLocation()).getLocation().distance(craftGPT.getServer().getPlayer("zizmax").getLocation()));
-        for (Entity entity : entities) {
-            double roll = random.nextDouble();
-            double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
-            if (roll <= chance) {
-                //autoCreateAIMob(entity);
+        if (chunk.getPersistentDataContainer().has(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN)) {
+
+            // Chunk has flag and has been evaluated for auto-spawning
+            if (chunk.getPersistentDataContainer().get(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN)) {
+                // Do nothing
+            }
+
+            // Chunk has flag and has NOT yet been evaluated for auto-spawning
+            else {
+                autoSpawnAIMobsAsEntitiesLoad(event);
+            }
+        }
+
+        // Chunk does NOT yet have flag
+        else {
+            autoSpawnAIMobsAsEntitiesLoad(event);
+        }
+    }
+
+    public void autoSpawnAIMobsAsEntitiesLoad(EntitiesLoadEvent event) {
+        if (craftGPT.getConfig().getBoolean("auto-spawn.enabled")) {
+            List<String> worldNames = craftGPT.getConfig().getStringList("auto-spawn.worlds");
+            List<World> worlds = new ArrayList<>();
+            for (String worldName : worldNames) {
+                worlds.add(craftGPT.getServer().getWorld(worldName));
+            }
+            if (worlds.contains(event.getChunk().getWorld())) {
+                event.getChunk().getPersistentDataContainer().set(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN, true);
+                List<Entity> entities = event.getEntities();
+                if (entities.size() > 0) {
+                    for (Entity entity : entities) {
+                        // LivingEntity, no custom name, not Player, not ArmorStand, not Citizens NPC
+                        if (entity instanceof LivingEntity && (entity.getCustomName() == null) && !(entity instanceof Player)
+                                && !(entity instanceof ArmorStand) && !(entity.hasMetadata("NPC"))) {
+                            double roll = random.nextDouble();
+                            double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
+                            if (roll <= chance) {
+                                autoCreateAIMob(entity);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
-    @EventHandler
-    public void onEntitiesLoad(EntitiesLoadEvent event) {
-        List<Entity> entities = event.getEntities();
-        craftGPT.getServer().broadcastMessage("E: " + entities.size());
-        craftGPT.getServer().broadcastMessage("E: (" + event.getChunk().getX() + ", " + event.getChunk().getZ() + ")");
-        craftGPT.getServer().broadcastMessage("E: " + event.getWorld().getHighestBlockAt(event.getChunk().getBlock(8, 128, 8).getLocation()).getLocation().distance(craftGPT.getServer().getPlayer("zizmax").getLocation()));
-        for (Entity entity : entities) {
-            double roll = random.nextDouble();
-            double chance = craftGPT.getConfig().getDouble("auto-spawn.chance") / 100.0;
-            if (roll <= chance) {
-                //autoCreateAIMob(entity);
-            }
-        }
-        event.getChunk().getPersistentDataContainer();
-    }
 
     @EventHandler
     public void onPlayerLogout(PlayerQuitEvent event) {
@@ -851,7 +871,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 }
 
                 if (mobBuilder.isAutoChat() == null) {
-                    mobBuilder.setAutoChat(craftGPT.getConfig().getBoolean("auto-chat.default"));
+                    mobBuilder.setAutoChat(craftGPT.getConfig().getBoolean("auto-chat.manual-default"));
                 }
 
                 // Finalize and save
@@ -935,7 +955,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 Float temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
                 aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("auto-spawn.default-prefix")));
                 aiMob.setEntity(entity);
-                aiMob.setAutoChat(craftGPT.getConfig().getBoolean("auto-spawn.auto-chat-default"));
+                aiMob.setAutoChat(craftGPT.getConfig().getBoolean("auto-chat.auto-spawn-default"));
 
 
                 // Finalize and save
@@ -945,16 +965,17 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 aiMob.setDefaultPrompt(true);
                 createAIMobData(aiMob, entity.getUniqueId().toString());
                 toggleWaitingOnAPI(entity);
-                craftGPT.getLogger().info( "AI enabled for " + aiMob.getEntityType() + " named " + name + " at " + entity.getLocation());
-                Bukkit.getScheduler().runTask(craftGPT, new Runnable() {
-                    @Override
-                    public void run() {
-                        craftGPT.getServer().getPlayer("zizmax").teleport(aiMob.getEntity().getLocation());
-                    }
-                });
+                craftGPT.getLogger().info( "Auto-enabled AI for " + aiMob.getEntityType() + " named " + name + " at " + entity.getLocation());
             }
         });
         toggleWaitingOnAPI(entity);
+    }
+
+    public void printSpawnedMobData(Player player, Entity entity) {
+        TextComponent message = new TextComponent(entity.getType() + ": " + Util.getAIMob(entity).getName());
+        message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + player.getName() + " " + entity.getLocation().getX() + " " + entity.getLocation().getY() + " " + entity.getLocation().getZ()));
+        message.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(player.getLocation().distance(entity.getLocation()) + " blocks away!").create()));
+        player.spigot().sendMessage(message);
     }
 
 

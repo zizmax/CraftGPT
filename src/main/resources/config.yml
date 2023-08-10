@@ -55,7 +55,6 @@ auto-spawn:
   # Use it for details about your server or world that you want the mobs to know
   prompt-appendix: "" # Leave blank for personalities to be completely random
   default-prefix: "<%NAME%>" # Supports '&' color codes. You can configure messages color by adding a color code at the end. (this prefix will be used for auto-spawn mobs)
-  auto-chat-default: true # Should auto-spawned mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
   worlds:
     - "world"
     - "world_the_end"
@@ -65,7 +64,8 @@ auto-spawn:
 # With this enabled, AI mobs with the auto-chat flag will automatically enter chat mode and react when a player approaches nearby
 auto-chat:
   enabled: false
-  default: false # Should manually-created mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
+  auto-spawn-default: true # Should auto-spawned mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
+  manual-default: false # Should manually-created mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
   radius: 20 # Setting this too high will cause lag!
 
 # ==== WARNING: Don't touch the settings below unless you know what you're doing. Changing the settings below WILL change the behavior of mob creation and chatting. ====
