@@ -229,52 +229,32 @@ public final class CraftGPT extends JavaPlugin {
         OkHttpClient client;
         Duration timeout = Duration.ofSeconds(getConfig().getInt("timeout"));
         if (getConfig().getBoolean("proxy.enabled")) {
-            Proxy proxy;
-            if (getConfig().getBoolean("proxy.http")) {
-                proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(getConfig().getString("proxy.host"), getConfig().getInt("proxy.port")));
-            } else {
-                proxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress(getConfig().getString("proxy.host"), getConfig().getInt("proxy.port")));
-            }
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(getConfig().getString("proxy.host"), getConfig().getInt("proxy.port")));
             if (getConfig().getBoolean("proxy.authentication.enabled")) {
-                if (getConfig().getBoolean("proxy.http")) {
-                    getLogger().info("Authenticating to HTTP proxy...");
-                    Authenticator proxyAuthenticator = new Authenticator() {
 
-                        @Override
-                        public Request authenticate(Route route, Response response) throws IOException {
-                            String credential = Credentials.basic(getConfig().getString("proxy.authentication.username"), getConfig().getString("proxy.authentication.password"));
-                            return response.request().newBuilder()
-                                    .header("Proxy-Authorization", credential)
-                                    .build();
-                        }
-                    };
+                getLogger().info("Authenticating to HTTP proxy...");
+                Authenticator proxyAuthenticator = new Authenticator() {
 
-                    client = defaultClient(key, timeout)
-                            .newBuilder()
-                            .proxyAuthenticator(proxyAuthenticator)
-                            .proxy(proxy)
-                            .build();
-                } else {
-                    getLogger().info("Authenticating to SOCKS proxy...");
+                    @Override
+                    public Request authenticate(Route route, Response response) throws IOException {
+                        String credential = Credentials.basic(getConfig().getString("proxy.authentication.username"), getConfig().getString("proxy.authentication.password"));
+                        return response.request().newBuilder()
+                                .header("Proxy-Authorization", credential)
+                                .build();
+                    }
+                };
 
-                    Authenticator proxyAuthenticator = new Authenticator() {
+                client = defaultClient(key, timeout)
+                        .newBuilder()
+                        .proxyAuthenticator(proxyAuthenticator)
+                        .proxy(proxy)
+                        .build();
 
-                        @Override
-                        public Request authenticate(Route route, Response response) throws IOException {
-                            String credential = Credentials.basic(getConfig().getString("proxy.authentication.username"), getConfig().getString("proxy.authentication.password"));
-                            return response.request().newBuilder()
-                                    .header("Proxy-Authorization", credential)
-                                    .build();
-                        }
-                    };
-
-                    client = defaultClient(key, timeout)
-                            .newBuilder()
-                            .socketFactory(new SocketFactory() {
-                            })
-                            .build();
-
-                }
+            } else {
+                client = defaultClient(key, timeout)
+                        .newBuilder()
+                        .proxy(proxy)
+                        .build();
             }
 
             getLogger().info("Connecting to OpenAI via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
