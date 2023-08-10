@@ -268,13 +268,19 @@ public final class CraftGPT extends JavaPlugin {
                         }
                     };
 
+                    // Doesn't work. See: https://stackoverflow.com/questions/76772846/socks5-authentication-with-okhttp-fails
                     client = defaultClient(key, timeout)
                             .newBuilder()
-                            .socketFactory(new SocketFactory() {
-                            })
+                            .proxyAuthenticator(proxyAuthenticator)
+                            .proxy(proxy)
                             .build();
 
                 }
+            } else {
+                client = defaultClient(key, timeout)
+                        .newBuilder()
+                        .proxy(proxy)
+                        .build();
             }
 
             getLogger().info("Connecting to OpenAI via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
