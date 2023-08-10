@@ -397,7 +397,17 @@ public final class CraftGPT extends JavaPlugin {
         long usage = getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage");
         DecimalFormat dfZero = new DecimalFormat("0.00");
         return Double.valueOf(dfZero.format(100.0 * usage / limit));
+    }
 
+    public double getGlobalUsagePercentage() {
+        long limit = getConfig().getLong("global-usage-limit");
+        long usage = getUsageFile().getLong("global-total-usage");
+        DecimalFormat dfZero = new DecimalFormat("0.00");
+        return Double.valueOf(dfZero.format(100.0 * usage / limit));
+    }
+
+    public String getGlobalUsageProgressBar() {
+        return colorProgressBar((int) getGlobalUsagePercentage(), 100, 40);
     }
 
 

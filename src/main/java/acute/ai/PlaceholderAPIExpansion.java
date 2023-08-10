@@ -38,20 +38,20 @@ public class PlaceholderAPIExpansion extends PlaceholderExpansion {
     @Override
     public String onPlaceholderRequest(Player player, String params) {
         if (params.equalsIgnoreCase("global_total_usage")) {
-            return String.valueOf(craftGPT.getUsageFile().getInt("global-total-usage"));
+            return String.valueOf(craftGPT.getUsageFile().getLong("global-total-usage"));
         }
 
         if (params.equalsIgnoreCase("global_usage_limit")) {
-            return String.valueOf(craftGPT.getConfig().getInt("global-usage-limit"));
+            return String.valueOf(craftGPT.getConfig().getLong("global-usage-limit"));
         }
 
         if (params.equalsIgnoreCase("global_usage_progress")) {
-            return craftGPT.getPlayerUsageProgressBar(player);
+            return craftGPT.getGlobalUsageProgressBar();
         }
 
         if (player != null) {
             if(params.equalsIgnoreCase("usage")) {
-                return String.valueOf(craftGPT.getUsageFile().getInt("players." + player.getUniqueId() + ".total-usage"));
+                return String.valueOf(craftGPT.getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage"));
             }
             if (params.equalsIgnoreCase("usage_limit")) {
                 return String.valueOf(CraftGPTListener.getTokenLimit(player));
