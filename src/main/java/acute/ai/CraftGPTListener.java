@@ -1006,12 +1006,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             return;
         }
 
-        // Warn about being BETA
-        if (craftGPT.chattingPlayers.values().contains(entity)) {
-            player.sendTitle("", ChatColor.YELLOW + "Multi-chat is BETA", 0, 60, 10);
-            player.sendMessage(CraftGPT.CHAT_PREFIX + "Multi-chat (2+ players talking with 1 AI mob) is currently in active development. " + ChatColor.YELLOW + "[" + ChatColor.WHITE + "Expect bugs!" + ChatColor.YELLOW + "]");
-        }
-
         craftGPT.chattingPlayers.put(player.getUniqueId(), entity);
         renameMob(entity);
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
@@ -1026,6 +1020,11 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             craftGPT.getUsageFile().set(path + ".total-usage", 0);
         }
         craftGPT.saveUsageFileAsync();
+    }
+
+    public void warnPlayerAboutBetaFunctionality(Player player, String title, String message) {
+            player.sendTitle("", ChatColor.YELLOW + title, 0, 60, 10);
+            player.sendMessage(CraftGPT.CHAT_PREFIX + message + ChatColor.YELLOW + "[" + ChatColor.WHITE + "Expect bugs!" + ChatColor.YELLOW + "]");
     }
 
     public void exitChat(Player player) {
