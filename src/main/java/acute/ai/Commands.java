@@ -213,7 +213,7 @@ public class Commands implements TabExecutor {
                             if (!player.hasPermission("craftgpt.locate")) {
                                 sayNoPermission(player);
                             } else {
-                                if (Util.isChatting(player) || craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                if (craftGPT.isChatting(player) || craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                     Entity entity;
                                     AIMob aiMob;
                                     if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
@@ -221,7 +221,7 @@ public class Commands implements TabExecutor {
                                         entity = aiMob.getEntity();
                                     } else {
                                         entity = craftGPT.chattingPlayers.get(player.getUniqueId());
-                                        aiMob = Util.getAIMob(entity);
+                                        aiMob = craftGPT.getAIMob(entity);
                                     }
                                     entity.setGlowing(true);
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + aiMob.getName() + " highlighted for 10 sec!");

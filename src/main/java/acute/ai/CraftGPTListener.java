@@ -577,13 +577,13 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 double radius = craftGPT.getConfig().getDouble("auto-chat.radius");
 
                 List<Entity> sortedNearbyEntities = player.getNearbyEntities(radius, radius, radius).stream()
-                        .filter(entity -> Util.isAIMob(entity))
+                        .filter(entity -> craftGPT.isAIMob(entity))
                         .sorted(Comparator.comparingDouble(entity -> entity.getLocation().distance(player.getLocation())))
                         .collect(Collectors.toList());
 
-                if (!Util.isChatting(player) && sortedNearbyEntities.size() > 0) {
+                if (!craftGPT.isChatting(player) && sortedNearbyEntities.size() > 0) {
                     Entity entity = sortedNearbyEntities.get(0);
-                    AIMob aiMob = Util.getAIMob(entity);
+                    AIMob aiMob = craftGPT.getAIMob(entity);
                     if (aiMob.isAutoChat() != null && aiMob.isAutoChat()) {
                         enterChat(player, entity);
                         handlePlayerEventReaction(player, "player-approach-npc", craftGPT.getConfig().getString("events.player-approach-npc.message"));
@@ -972,7 +972,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void printSpawnedMobData(Player player, Entity entity) {
-        TextComponent message = new TextComponent(entity.getType() + ": " + Util.getAIMob(entity).getName());
+        TextComponent message = new TextComponent(entity.getType() + ": " + craftGPT.getAIMob(entity).getName());
         message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + player.getName() + " " + entity.getLocation().getX() + " " + entity.getLocation().getY() + " " + entity.getLocation().getZ()));
         message.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(player.getLocation().distance(entity.getLocation()) + " blocks away!").create()));
         player.spigot().sendMessage(message);

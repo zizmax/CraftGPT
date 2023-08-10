@@ -90,9 +90,6 @@ public final class CraftGPT extends JavaPlugin {
         getLogger().info("| * Enjoying the plugin? Leave a review and share with a friend! |");
         getLogger().info("+----------------------------------------------------------------+");
 
-        // Initialize Util
-        Util.setCraftGPT(this);
-
         // Register events
         getServer().getPluginManager().registerEvents(new CraftGPTListener(this), this);
 
@@ -408,6 +405,21 @@ public final class CraftGPT extends JavaPlugin {
 
     public String getGlobalUsageProgressBar() {
         return colorProgressBar((int) getGlobalUsagePercentage(), 100, 40);
+    }
+
+
+    public boolean isAIMob(Entity entity) {
+        if (craftGPTData.containsKey(entity.getUniqueId().toString())) return true;
+        else return false;
+    }
+
+    public AIMob getAIMob(Entity entity) {
+        return craftGPTData.get(entity.getUniqueId().toString());
+    }
+
+    public boolean isChatting(Player player) {
+        if (chattingPlayers.containsKey(player.getUniqueId())) return true;
+        else return false;
     }
 
 
