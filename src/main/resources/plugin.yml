@@ -52,3 +52,11 @@ permissions:
     description: Medium usage allowance
   craftgpt.usage-limit.high:
     description: High usage allowance
+  craftgpt.visibility:
+    description: Visibility command
+  craftgpt.auto-chat:
+    description: Auto-chat command
+  crafgpt.prefix:
+    description: Prefix command
+  craftgpt.locate:
+    description: Locate command

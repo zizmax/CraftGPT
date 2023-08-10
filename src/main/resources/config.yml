@@ -60,6 +60,14 @@ auto-spawn:
     - "world_the_end"
     - "world_nether"
 
+# Auto-chat settings
+# With this enabled, AI mobs with the auto-chat flag will automatically enter chat mode and react when a player approaches nearby
+auto-chat:
+  enabled: false
+  auto-spawn-default: true # Should auto-spawned mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
+  manual-default: false # Should manually-created mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
+  radius: 20 # Setting this too high will cause lag!
+
 # ==== WARNING: Don't touch the settings below unless you know what you're doing. Changing the settings below WILL change the behavior of mob creation and chatting. ====
 prompt:
   # System prompt used for all AI mobs that don't have a 'rawprompt' set
@@ -175,6 +183,9 @@ events:
   player-leash-entity:
     chance: 20
     message: "just attached a leash to a %s"
+  player-approach-npc:
+    chance: 100 # Chance isn't really relevant here because the approach event fires each time a player moves
+    message: "just walked up next to you"
 
 # Events where player is damaged by something
   player-hurt-suffocation:

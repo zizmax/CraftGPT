@@ -5,6 +5,7 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
@@ -18,7 +19,6 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.StringUtil;
-import org.checkerframework.checker.units.qual.C;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +32,7 @@ public class Commands implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "clearUsageFile");
+        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "auto-chat", "clearUsageFile", "locate");
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
@@ -170,51 +170,98 @@ public class Commands implements TabExecutor {
                             MapMeta meta = (MapMeta) map.getItemMeta();
                             //fixme Should probably remove
                         } else if (args[0].equals("prefix")) {
-                            if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                String prefix = "";
-                                for (int i = 1; i < args.length - 1; i++) {
-                                    prefix = prefix + args[i] + " ";
-                                }
-                                prefix = prefix + args[args.length - 1];
-                                prefix = ChatColor.translateAlternateColorCodes('&', prefix);
-                                craftGPT.selectingPlayers.get(player.getUniqueId()).setPrefix(prefix);
-                                if (prefix.contains("%NAME%")) {
-                                    if (craftGPT.selectingPlayers.get(player.getUniqueId()).getName() != null) {
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix.replace("%NAME%", craftGPT.selectingPlayers.get(player.getUniqueId()).getName()));
+                            if (!player.hasPermission("craftgpt.prefix")) {
+                                sayNoPermission(player);
+                            } else {
+                                if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                    String prefix = "";
+                                    for (int i = 1; i < args.length - 1; i++) {
+                                        prefix = prefix + args[i] + " ";
+                                    }
+                                    prefix = prefix + args[args.length - 1];
+                                    prefix = ChatColor.translateAlternateColorCodes('&', prefix);
+                                    craftGPT.selectingPlayers.get(player.getUniqueId()).setPrefix(prefix);
+                                    if (prefix.contains("%NAME%")) {
+                                        if (craftGPT.selectingPlayers.get(player.getUniqueId()).getName() != null) {
+                                            player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix.replace("%NAME%", craftGPT.selectingPlayers.get(player.getUniqueId()).getName()));
+                                        } else {
+                                            player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix.replace("%NAME%", "{NAME}"));
+                                        }
                                     } else {
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix.replace("%NAME%", "{NAME}"));
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix);
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "WARNING: %NAME% not set in prefix so mob's name will not appear!");
                                     }
                                 } else {
-                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Prefix set to: " + ChatColor.RESET + prefix);
-                                    player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "WARNING: %NAME% not set in prefix so mob's name will not appear!");
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
                                 }
+                            }
+                        } else if (args[0].equalsIgnoreCase("auto-chat")) {
+                            if (!player.hasPermission("craftgpt.auto-chat")) {
+                                sayNoPermission(player);
                             } else {
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
+                                if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                    AIMob aiMob = craftGPT.selectingPlayers.get(player.getUniqueId());
+                                    if (aiMob.isAutoChat() == null || aiMob.isAutoChat() == false)
+                                        aiMob.setAutoChat(true);
+                                    else aiMob.setAutoChat(false);
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Auto-chat set to " + aiMob.isAutoChat().toString());
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
+                                }
+                            }
+                        }  else if (args[0].equalsIgnoreCase("locate")) {
+                            if (!player.hasPermission("craftgpt.locate")) {
+                                sayNoPermission(player);
+                            } else {
+                                if (Util.isChatting(player) || craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                    Entity entity;
+                                    AIMob aiMob;
+                                    if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                        aiMob = craftGPT.selectingPlayers.get(player.getUniqueId());
+                                        entity = aiMob.getEntity();
+                                    } else {
+                                        entity = craftGPT.chattingPlayers.get(player.getUniqueId());
+                                        aiMob = Util.getAIMob(entity);
+                                    }
+                                    entity.setGlowing(true);
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + aiMob.getName() + " highlighted for 10 sec!");
+                                    Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            entity.setGlowing(false);
+                                        }
+                                    }, 200L);
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob chatting/selected!");
+                                }
                             }
                         } else if (args[0].equals("visibility")) {
-                            if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());
-                                if (args.length > 1) {
-                                    if (args[1].equals("world")) {
-                                        aiMob.setVisibility("world");
-                                    } else if (args[1].equals("normal")) {
-                                        aiMob.setVisibility("normal");
-                                    } else if (args[1].equals("global")) {
-                                        aiMob.setVisibility("global");
-                                    } else if (args[1].equals("private")) {
-                                        aiMob.setVisibility("private");
-                                    } else {
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Unrecognized visibility!");
-                                        return true;
-                                    }
-                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Visibility set to: " + args[1]);
-                                } else {
-                                    player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + aiMob.getName() + ChatColor.GRAY + " has visibility: " + aiMob.getVisibility());
-                                }
+                            if (!player.hasPermission("craftgpt.visibility")) {
+                                sayNoPermission(player);
                             } else {
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
+                                if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                    AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());
+                                    if (args.length > 1) {
+                                        if (args[1].equals("world")) {
+                                            aiMob.setVisibility("world");
+                                        } else if (args[1].equals("normal")) {
+                                            aiMob.setVisibility("normal");
+                                        } else if (args[1].equals("global")) {
+                                            aiMob.setVisibility("global");
+                                        } else if (args[1].equals("private")) {
+                                            aiMob.setVisibility("private");
+                                        } else {
+                                            player.sendMessage(CraftGPT.CHAT_PREFIX + "Unrecognized visibility!");
+                                            return true;
+                                        }
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Visibility set to: " + args[1]);
+                                    } else {
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + aiMob.getName() + ChatColor.GRAY + " has visibility: " + aiMob.getVisibility());
+                                    }
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
+                                }
                             }
-
                         } else if (args[0].equals("displayname")) {
                             if (args.length > 1) {
                                 String name = "";

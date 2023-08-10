@@ -44,6 +44,8 @@ public final class CraftGPT extends JavaPlugin {
 
     public NamespacedKey magicWandKey = new NamespacedKey(this, "secret");
 
+    public NamespacedKey autoSpawnChunkFlagKey = new NamespacedKey(this, "chunk-flag");
+
     public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
@@ -85,6 +87,9 @@ public final class CraftGPT extends JavaPlugin {
         getLogger().info("| * Join the Discord at: https://discord.gg/BXhUUQEymg           |");
         getLogger().info("| * Enjoying the plugin? Leave a review and share with a friend! |");
         getLogger().info("+----------------------------------------------------------------+");
+
+        // Initialize Util
+        Util.setCraftGPT(this);
 
         // Register events
         getServer().getPluginManager().registerEvents(new CraftGPTListener(this), this);

@@ -18,6 +18,7 @@ class AIMob {
     private String backstory;
     private String visibility;
     private String prefix;
+    private Boolean autoChat;
 
     public Float getTemperature() {
         return temperature;
@@ -98,5 +99,13 @@ class AIMob {
     public String getPrefix() {return prefix; }
 
     public void setPrefix(String prefix) {this.prefix = prefix; }
+
+    public Boolean isAutoChat() {
+        return autoChat;
+    }
+
+    public void setAutoChat(Boolean autoChat) {
+        this.autoChat = autoChat;
+    }
 
 }
