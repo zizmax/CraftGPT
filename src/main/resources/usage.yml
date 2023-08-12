@@ -9,5 +9,6 @@
 #########################################################
 
 # Usage flatfile data storage
+# DO NOT EDIT UNLESS YOU KNOW WHAT YOU'RE DOING. Use /cg clearUsageFile to reset this file in-game
 
 global-total-usage: 0

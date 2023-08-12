@@ -103,6 +103,15 @@ prompt:
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
+# Usage reset can be used to schedule automatic resetting of the usage per player or globally.
+
+usage-reset:
+  enabled: false
+  reset-global: true # true = global usage will be reset along with per-player usage
+  daily: true # false = monthly. If true, usage will reset at midnight in the server's local timezone.
+  day-of-month: 01 # If daily = false, usage will reset at midnight on the specified day of the month
+
+
 # Example: Use permission 'craftgpt.usage-limit.high' to set player's token limit to the 'high' category
 # If a player does not have a specific usage-limit permission, they will inherit the default-usage-limit
 # If a player has multiple usage-limit permissions, the limit will be set to the highest permission the player has
