@@ -22,10 +22,10 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.spigotmc.event.entity.EntityMountEvent;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.MonthDay;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -1351,18 +1351,25 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public static boolean isUnderPlayerLimit(Player player) {
         if (craftGPT.getConfig().getBoolean("usage-reset.enabled")) {
-            if (craftGPT.getUsageFile().getString("last-reset") == null) {
-                craftGPT.getUsageFile().set("last-reset", LocalDateTime.now());
+            if (craftGPT.getUsageFile().getString("last-reset").equals("null") || craftGPT.getUsageFile().getString("last-reset") == null) {
+                craftGPT.getUsageFile().set("last-reset", LocalDateTime.now().toString());
+                craftGPT.saveUsageFile();
             }
             LocalDateTime lastResetDateTime = LocalDateTime.parse(craftGPT.getUsageFile().getString("last-reset"));
-            if (LocalDateTime.now().isAfter(getNextResetDateTime(lastResetDateTime))) {
+            LocalDateTime nextResetDateTime = getNextResetDateTime(lastResetDateTime);
+            if (craftGPT.debug) {
+                craftGPT.getLogger().info("Last time: " + lastResetDateTime);
+                craftGPT.getLogger().info("Next time: " + nextResetDateTime);
+            }
+
+
+            if (LocalDateTime.now().isAfter(nextResetDateTime)) {
                 long globalTotalUsage = craftGPT.getUsageFile().getLong("global-total-usage");
-                craftGPT.getLogger().info("Global: " + globalTotalUsage);
                 craftGPT.createUsageFile(true);
-                if (craftGPT.getConfig().getBoolean("usage-reset.reset-global")) {
-                    craftGPT.getUsageFile().set("global-total-usage", globalTotalUsage);
-                    craftGPT.saveUsageFileAsync();
-                }
+                if (!craftGPT.getConfig().getBoolean("usage-reset.reset-global")) craftGPT.getUsageFile().set("global-total-usage", globalTotalUsage);
+                craftGPT.getUsageFile().set("last-reset", LocalDateTime.now().toString());
+                craftGPT.saveUsageFile();
+                craftGPT.getLogger().info("Usage file reset!");
             }
         }
         if (craftGPT.getUsageFile().getLong("players." + player.getUniqueId() + ".total-usage") > getTokenLimit(player)) return false;
@@ -1378,9 +1385,21 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         if (craftGPT.getConfig().getBoolean("usage-reset.daily")) {
             return lastResetDateTime.plusDays(1).toLocalDate().atStartOfDay();
         } else {
-            return YearMonth.from(lastResetDateTime)
+
+            int resetDate = craftGPT.getConfig().getInt("usage-reset.day-of-month");
+            LocalDateTime now = LocalDateTime.now();
+
+            LocalDateTime nearestResetDate = Collections.min(List.of(YearMonth.from(lastResetDateTime)
                     .plusMonths(1)
-                    .atDay(craftGPT.getConfig().getInt("usage-reset.day-of-month")).atStartOfDay();
+                    .atDay(resetDate).atStartOfDay(), YearMonth.from(lastResetDateTime).atDay(resetDate).atStartOfDay()), (d1, d2) -> {
+                        Duration dur1 = Duration.between(d1, now);
+                        Duration dur2 = Duration.between(d2, now);
+                        return Long.compare(Math.abs(dur1.toSeconds()), Math.abs(dur2.toSeconds()));
+                    });
+            if (LocalDateTime.now().isAfter(nearestResetDate)) return YearMonth.from(lastResetDateTime)
+                    .plusMonths(1)
+                    .atDay(resetDate).atStartOfDay();
+            else return nearestResetDate;
         }
     }
 
@@ -1398,14 +1417,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     return;
                 }
 
-                if (isUnderPlayerLimit(player)) {
+                if (!isUnderPlayerLimit(player)) {
                     event.setCancelled(true);
                     player.sendMessage(CraftGPT.CHAT_PREFIX + "You have reached your usage limit!");
                     exitChat(player);
                     return;
                 }
 
-                if (isUnderGlobalLimit()) {
+                if (!isUnderGlobalLimit()) {
                     event.setCancelled(true);
                     player.sendMessage(CraftGPT.CHAT_PREFIX + "Server has reached its usage limit!");
                     exitChat(player);

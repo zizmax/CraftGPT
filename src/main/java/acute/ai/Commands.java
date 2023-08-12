@@ -20,6 +20,8 @@ import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.StringUtil;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -518,6 +520,9 @@ public class Commands implements TabExecutor {
                                 sayNoPermission(player);
                             } else {
                                 player.sendMessage(CraftGPT.CHAT_PREFIX + craftGPT.getPlayerUsageProgressBar(player) + " (" + craftGPT.getPlayerUsagePercentage(player) + ")%");
+                                //fixme: To add soon
+                                //Duration duration = Duration.between(LocalDateTime.now(), nextResetDateTime);
+                                //craftGPT.getLogger().info("Until: " + duration.toHours() + " (" + duration + ")");
                             }
                         } else if (args[0].equals("dryrun")) {
                             if (!player.hasPermission("craftgpt.dryrun")) {

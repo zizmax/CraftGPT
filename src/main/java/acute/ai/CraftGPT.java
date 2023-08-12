@@ -214,7 +214,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public void createUsageFile(boolean overwrite) {
         usageFile = new File(getDataFolder(), "usage.yml");
-        if (!usageFile.exists() || overwrite) {
+        if (!usageFile.exists() || overwrite || usageFile.length() == 0L) {
             usageFile.getParentFile().mkdirs();
             saveResource("usage.yml", true);
         }
