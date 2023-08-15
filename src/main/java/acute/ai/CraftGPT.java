@@ -270,17 +270,17 @@ public final class CraftGPT extends JavaPlugin {
             client = defaultClient(key, timeout)
                     .newBuilder()
                     .build();
-            getLogger().info("Connecting to OpenAI...");
         }
         Retrofit retrofit = defaultRetrofit(client, mapper);
         OpenAiApi api = retrofit.create(OpenAiApi.class);
         openAIService = new OpenAiService(api);
 
 
-        long start = System.currentTimeMillis();
         new BukkitRunnable() {
             @Override
             public void run() {
+                long start = System.currentTimeMillis();
+                getLogger().info("Connecting to OpenAI...");
                 String response = CraftGPTListener.tryNonChatRequest("Say hi", "Hi!", .1f, 2);
                 if (response == null) {
                     getLogger().severe("Tried 3 times and couldn't connect to OpenAI for the error(s) printed above!");

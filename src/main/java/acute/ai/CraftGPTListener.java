@@ -16,6 +16,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
+import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -25,7 +26,6 @@ import org.spigotmc.event.entity.EntityMountEvent;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -155,7 +155,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     @EventHandler
-    public void onEntitiesLoad(EntitiesLoadEvent event) {
+    public void onEntitiesLoad(ChunkLoadEvent event) {
 
         Chunk chunk = event.getChunk();
         if (chunk.getPersistentDataContainer().has(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN)) {
@@ -177,7 +177,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    public void autoSpawnAIMobsAsEntitiesLoad(EntitiesLoadEvent event) {
+    public void autoSpawnAIMobsAsEntitiesLoad(ChunkLoadEvent event) {
+        // Originally used EntitiesLoadEvent, but <=1.16 doesn't have it, so switched to ChunkLoadEvent
+        // Are they identical for this purpose? Documentation doesn't clarify if there's a difference
         if (craftGPT.getConfig().getBoolean("auto-spawn.enabled")) {
             List<String> worldNames = craftGPT.getConfig().getStringList("auto-spawn.worlds");
             List<World> worlds = new ArrayList<>();
@@ -186,7 +188,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             }
             if (worlds.contains(event.getChunk().getWorld())) {
                 event.getChunk().getPersistentDataContainer().set(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN, true);
-                List<Entity> entities = event.getEntities();
+                List<Entity> entities = List.of(event.getChunk().getEntities());
                 if (entities.size() > 0) {
                     for (Entity entity : entities) {
                         // LivingEntity, no custom name, not Player, not ArmorStand, not Citizens NPC
