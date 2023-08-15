@@ -414,7 +414,11 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public AIMob getAIMob(Entity entity) {
-        return craftGPTData.get(entity.getUniqueId().toString());
+        if (isAIMob(entity)) {
+            return craftGPTData.get(entity.getUniqueId().toString());
+        } else {
+            return null;
+        }
     }
 
     public boolean isChatting(Player player) {

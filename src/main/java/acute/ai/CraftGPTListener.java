@@ -97,7 +97,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public String getMobName(Entity entity) {
-        if (entity instanceof Player || entity.hasMetadata("NPC")) {
+        if (entity instanceof Player || entity.hasMetadata("NPC") || entity.isCustomNameVisible()) {
             return entity.getName();
         }
         String name = entity.getType().toString();
@@ -628,6 +628,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     return;
                 }
                 toggleSelecting(player, entity);
+                return;
             }
 
             // Player hit mob while sneaking
@@ -1051,15 +1052,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public void enterSelecting(Player player, Entity entity) {
         AIMob mobSelection = new AIMob();
-        mobSelection.setEntity(entity);
+        if (craftGPT.isAIMob(entity)) mobSelection = craftGPT.getAIMob(entity);
+        else mobSelection.setEntity(entity);
         craftGPT.selectingPlayers.put(player.getUniqueId(), mobSelection);
         String mobName;
-        if (entity.isCustomNameVisible()) {
-            mobName = entity.getCustomName();
-            mobSelection.setName(mobName);
-        }
-        else {
+        if (mobSelection.getName() == null) {
             mobName = getMobName(entity);
+        } else {
+            mobName = mobSelection.getName();
         }
         entity.setGlowing(true);
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Selected %s", mobName));
@@ -1074,11 +1074,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void exitSelecting(Player player) {
         String mobName;
         Entity entity = craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity();
-        if (entity.isCustomNameVisible()) {
-            mobName = entity.getCustomName();
-        }
-        else {
+        if (!craftGPT.isAIMob(entity)) {
             mobName = getMobName(entity);
+        } else {
+            mobName = craftGPT.getAIMob(entity).getName();
         }
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Unselected %s", mobName));
         craftGPT.selectingPlayers.remove(player.getUniqueId());
