@@ -789,6 +789,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 String response = null;
 
                 mobBuilder.setEntityType(entity.getType().toString().toLowerCase());
+                mobBuilder.setEntity(entity);
 
                 // Generate backstory
                 String backstory = null;

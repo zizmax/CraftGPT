@@ -39,6 +39,7 @@ import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.theokanning.openai.service.OpenAiService.*;
 
@@ -57,15 +58,15 @@ public final class CraftGPT extends JavaPlugin {
 
     public List<String> waitingOnAPIList = new ArrayList<>();
 
-    HashMap<UUID, Entity> chattingPlayers = new HashMap<>();
+    ConcurrentHashMap<UUID, Entity> chattingPlayers = new ConcurrentHashMap<>();
 
     ArrayList<UUID> debuggingPlayers = new ArrayList<>();
 
-    HashMap<UUID, AIMob> selectingPlayers = new HashMap<>();
+    ConcurrentHashMap<UUID, AIMob> selectingPlayers = new ConcurrentHashMap<>();
 
     private final Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassTypeAdapter()).setPrettyPrinting().create();
 
-    HashMap<String, AIMob> craftGPTData = new HashMap<>();
+    ConcurrentHashMap<String, AIMob> craftGPTData = new ConcurrentHashMap<>();
 
     private File usageFile;
     private FileConfiguration usageFileConfig;
@@ -295,6 +296,8 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void writeData(CraftGPT craftGPT) {
+        long start = System.currentTimeMillis();
+
         Path path = Paths.get(craftGPT.getDataFolder() + "/data.json");
         try {
             if(!Files.exists(path)) {
@@ -310,11 +313,11 @@ public final class CraftGPT extends JavaPlugin {
 
         try (BufferedWriter bufferedWriter = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
             gson.toJson(craftGPTData, bufferedWriter);
-            getLogger().info("Wrote data.json!");
+            long end = System.currentTimeMillis();
+            getLogger().info("Wrote data.json! (" + (end-start) + "ms)");
         } catch (IOException e) {
             e.printStackTrace();
         }
-
     }
 
     //fixme Probably much better way of handling this. The ChatMessage type couldn't be automatically parsed by gson
@@ -334,7 +337,7 @@ public final class CraftGPT extends JavaPlugin {
         }
     }
 
-    public HashMap<String, AIMob> readData(CraftGPT craftGPT) {
+    public ConcurrentHashMap<String, AIMob> readData(CraftGPT craftGPT) {
         Path path = Paths.get(craftGPT.getDataFolder() + "/data.json");
         try {
             if (!Files.exists(path)) {
@@ -353,7 +356,7 @@ public final class CraftGPT extends JavaPlugin {
             JsonReader jsonReader = new JsonReader(bufferedReader);
 
 
-            HashMap<String, AIMob> map = gson.fromJson(jsonReader, new TypeToken<HashMap<String, AIMob>>() {}.getType());
+            ConcurrentHashMap<String, AIMob> map = gson.fromJson(jsonReader, new TypeToken<ConcurrentHashMap<String, AIMob>>() {}.getType());
             getLogger().info("Read data.json!");
 
             return map;
