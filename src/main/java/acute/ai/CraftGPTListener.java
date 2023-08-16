@@ -17,7 +17,6 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
 import org.bukkit.event.world.ChunkLoadEvent;
-import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -40,60 +39,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public CraftGPTListener(CraftGPT craftGPT) {
         this.craftGPT = craftGPT;
-    }
-
-    public void renameMob(Entity entity) {
-        if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
-            entity.setCustomNameVisible(true);
-            if (isWaitingOnAPI(entity)) {
-                if (!craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
-                    // Enabling mob (clock icon)
-                    entity.setCustomName("Enabling..." + ChatColor.YELLOW + " \u231A");
-                } else {
-                    // Waiting on API (clock icon)
-                    entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.YELLOW + " \u231A");
-                }
-
-            }
-            else {
-                if (craftGPT.chattingPlayers.containsValue(entity)) {
-                    // Currently chatting (green lightning bolt)
-                    entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.GREEN + " \u26A1");
-                    // star  "\u2B50"
-                }
-                else {
-                    if (isAIEnabled(entity)) {
-                        // AI-enabled (blue lightning bolt)
-                        entity.setCustomName(craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.BLUE + " \u26A1");
-                    } else {
-                        entity.setCustomName(null);
-                        entity.setCustomNameVisible(false);
-                    }
-                }
-            }
-        }
-    }
-
-    public void toggleWaitingOnAPI(Entity entity) {
-        if (isWaitingOnAPI(entity)) {
-            craftGPT.waitingOnAPIList.remove(entity.getUniqueId().toString());
-        }
-        else craftGPT.waitingOnAPIList.add(entity.getUniqueId().toString());
-        renameMob(entity);
-    }
-
-    public boolean isWaitingOnAPI(Entity entity) {
-        if (craftGPT.waitingOnAPIList.contains(entity.getUniqueId().toString())) {
-            return true;
-        }
-        else return false;
-    }
-
-    public boolean isAIEnabled(Entity entity) {
-        if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
-            return true;
-        }
-        else return false;
     }
 
     public String getMobName(Entity entity) {
@@ -378,7 +323,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         Player player = null;
 
         // Entity
-        if (isAIEnabled(event.getEntity()) && !event.isCancelled() && craftGPT.chattingPlayers.values().contains(event.getEntity())) {
+        if (craftGPT.isAIMob(event.getEntity()) && !event.isCancelled() && craftGPT.chattingPlayers.values().contains(event.getEntity())) {
             // Check to see if damage killed entity to let a death event handle it instead
             if (((LivingEntity) event.getEntity()).getHealth() < event.getFinalDamage()) {
                 return;
@@ -484,7 +429,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
                 for (Entity entity : player.getNearbyEntities(chattingRadius, chattingRadius, chattingRadius)) {
                     if (entity instanceof LivingEntity && entity.getUniqueId().equals(entityUUID)) {
-                        if (!isWaitingOnAPI(entity)) {
+                        if (!craftGPT.isWaitingOnAPI(entity)) {
                             subject = String.format(craftGPT.getConfig().getString("player-event-prefix"), player.getName());
                             prepareEventMessageResponse(subject + " " + eventMessage, entity, Arrays.asList(player), new HashSet<>(getPlayersWithinInteractionRadius(entity.getLocation())));
                             if (craftGPT.debuggingPlayers.contains(player.getUniqueId())) {
@@ -512,7 +457,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public void handlePassiveEventReaction(Entity entity, String name, String eventMessage) {
         int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
-        if (!isWaitingOnAPI(entity)) {
+        if (!craftGPT.isWaitingOnAPI(entity)) {
             double roll = random.nextDouble();
             double chance = craftGPT.getConfig().getDouble("events." + name + ".chance") / 100.0;
             String subject = String.format(craftGPT.getConfig().getString("passive-event-prefix"));;
@@ -540,19 +485,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             }
         }
         return playersChattingWithEntity;
-    }
-
-    public static String nonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
-        List<ChatMessage> chatMessages = new ArrayList<>();
-        chatMessages.add(new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage));
-        chatMessages.add(new ChatMessage(ChatMessageRole.USER.value(), userMessage));
-        ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
-                .messages(chatMessages)
-                .temperature((double) temp)
-                .maxTokens(maxTokens)
-                .model("gpt-3.5-turbo")
-                .build();
-        return craftGPT.openAIService.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
     }
 
     public void toggleSelecting(Player player, Entity entity){
@@ -635,7 +567,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
             // Player hit mob while sneaking
             if (player.isSneaking()) {
-                if (isAIEnabled(entity)) {
+                if (craftGPT.isAIMob(entity)) {
                     event.setCancelled(true);
 
                     UUID playerUUID = player.getUniqueId();
@@ -698,12 +630,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
     }
 
-    public void createAIMobData(AIMob aiMob, String uuid) {
-        if (craftGPT.debug) craftGPT.getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
-        craftGPT.craftGPTData.put(uuid, aiMob);
-        craftGPT.writeData(craftGPT);
-    }
-
     public ChatMessage injectChattingPlayersIntoPrompt(Entity entity, ChatMessage prompt) {
         String chattingInstructions = craftGPT.getConfig().getString("prompt.chatting-instructions");
         List<Player> playersChattingWithEntity = getPlayersChattingWithEntity(entity);
@@ -720,182 +646,15 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         return prompt;
     }
 
-    public ChatMessage generateDefaultPrompt(AIMob aiMob) {
-        String newPrompt = craftGPT.getConfig().getString("prompt.default-system-prompt");
-        newPrompt = newPrompt.replace("%ENTITY_TYPE%", aiMob.getEntityType());
-        newPrompt = newPrompt.replace("%BACKSTORY%", aiMob.getBackstory());
-        if (craftGPT.debug) craftGPT.getLogger().info("PROMPT: " + newPrompt);
-        return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
-    }
-
-    public static void printAPIErrorConsole(OpenAiHttpException e) {
-        craftGPT.getLogger().warning("OpenAI API error!");
-        craftGPT.getLogger().warning("Error type: " + e.type);
-        craftGPT.getLogger().warning("OpenAI error code: " + e.statusCode);
-        craftGPT.getLogger().warning("OpenAI error message: " + e.getMessage());
-        if (e.getMessage().contains("quota")) {
-            craftGPT.getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
-            craftGPT.getLogger().warning("Using the API *REQUIRES* credits in your account which can either be purchased with a credit card or through a free trial.");
-            craftGPT.getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
-        }
-        else if (e.getMessage().contains("Rate limit reached")) {
-            craftGPT.getLogger().warning("This is most often occurs because the OpenAI free trial credits have a low rate limit of 3 messages/min. You must wait to send messages or add a billing method to your account.");
-        }
-    }
-
-    public void printFailureToCreateMob(Player player, Entity entity) {
-        craftGPT.getLogger().severe("Mob at: " + entity.getLocation() + " failed to enable due to error printed above!");
-        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
-        player.sendMessage(ChatColor.RED + "=======================================");
-        player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
-        player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");
-        player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
-        player.sendMessage(ChatColor.RED + "=======================================");
-    }
-
-    public static String tryNonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
-        String errorSignature = null;
-        String response;
-
-        for (int i = 0; i < 3; i++) {
-            try {
-                response = nonChatRequest(systemMessage, userMessage, temp, maxTokens);
-                return response;
-            } catch (OpenAiHttpException e) {
-                if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
-                    craftGPT.getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
-                } else {
-                    printAPIErrorConsole(e);
-                    errorSignature = e.statusCode + e.type;
-                }
-
-            } catch (Exception e) {
-                craftGPT.getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
-                if (!e.getMessage().contains("timeout")) {
-                    e.printStackTrace();
-                }
-            }
-        }
-        return null;
-    }
-
-    public void playerCreateAIMob(Player player, Entity entity) {
-        String originalDisplayName = entity.getName();
+    public void playerCreateAIMob(Player player, AIMob aiMob) {
         Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
             @Override
             public void run() {
-                List<ChatMessage> messages = new ArrayList<>();
-                AIMob mobBuilder = craftGPT.selectingPlayers.get(player.getUniqueId());
-                String response = null;
-
-                mobBuilder.setEntityType(entity.getType().toString().toLowerCase());
-                mobBuilder.setEntity(entity);
-
-                // Generate backstory
-                String backstory = null;
-                if (mobBuilder.getBackstory() == null && mobBuilder.getRawPrompt() == null) {
-                    String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
-                    String userMessage = "";
-                    if (mobBuilder.getName() == null) {
-                        userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
-                        userMessage = userMessage.replace("%ENTITY_TYPE%", mobBuilder.getEntityType());
-                    } else {
-                        userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
-                        userMessage = userMessage.replace("%ENTITY_TYPE%", mobBuilder.getEntityType());
-                        userMessage = userMessage.replace("%NAME%", mobBuilder.getName());
-                    }
-
-                    response = tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
-
-                    if (response == null) {
-                        printFailureToCreateMob(player, entity);
-                        toggleWaitingOnAPI(entity);
-                        return;
-                    } else {
-                        backstory = response;
-                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Backstory generated!");
-                        mobBuilder.setBackstory(backstory);
-                    }
-                }
-                else if (mobBuilder.getBackstory() != null){
-                    backstory = mobBuilder.getBackstory();
-                }
-
-
-                // Generate name
-                String name = null;
-                if (mobBuilder.getName() == null) {
-
-                    if (backstory != null) {
-                        String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
-                        userMessage = userMessage.replace("%BACKSTORY%", mobBuilder.getBackstory());
-                        name = tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
-                    }
-                    if (mobBuilder.getRawPrompt() != null) {
-                        name = originalDisplayName;
-                    }
-
-                    if (name == null) {
-                        printFailureToCreateMob(player, entity);
-                        toggleWaitingOnAPI(entity);
-                        return;
-                    } else {
-                        if (name.substring(name.length() - 1).equals(".")) {
-                            name = name.substring(0, name.length() - 1);
-                        }
-                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Name generated!");
-                        mobBuilder.setName(name);
-                    }
-
-                }
-                else {
-                    name = mobBuilder.getName();
-                }
-
-                // Generate prompt
-                ChatMessage prompt;
-                if (mobBuilder.getRawPrompt() != null) {
-                    prompt = new ChatMessage(ChatMessageRole.SYSTEM.value(), mobBuilder.getRawPrompt());
-                    mobBuilder.setDefaultPrompt(false);
-                }
-                else {
-                    prompt = generateDefaultPrompt(mobBuilder);
-                    mobBuilder.setDefaultPrompt(true);
-                }
-
-                if (craftGPT.debug) {
-                    craftGPT.getLogger().info("NAME: " + name);
-                    craftGPT.getLogger().info("BACKSTORY: " + backstory);
-                    craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
-                }
-
-                // Set temperature, prefix, and auto-chat
-                if (mobBuilder.getTemperature() == 0.0f) {
-                    mobBuilder.setTemperature((float) craftGPT.getConfig().getDouble("default-temperature"));
-                }
-
-                if (mobBuilder.getPrefix() == null) {
-                    mobBuilder.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix")));
-                }
-
-                if (mobBuilder.isAutoChat() == null) {
-                    mobBuilder.setAutoChat(craftGPT.getConfig().getBoolean("auto-chat.manual-default"));
-                }
-
-                // Finalize and save
-                messages.add(prompt);
-                mobBuilder.setMessages(messages);
-                createAIMobData(mobBuilder, entity.getUniqueId().toString());
-                toggleWaitingOnAPI(entity);
-                player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
-                player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
-                entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
-                entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
-                craftGPT.getLogger().info(player.getName() + " enabled AI for " + mobBuilder.getEntityType() + " named " + name + " at " + entity.getLocation());
+                aiMob.buildPlayerCreatedAIMob(player);
             }
         });
-        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Enabling AI for %s...", getMobName(entity)));
-        toggleWaitingOnAPI(entity);
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Enabling AI for %s...", getMobName(aiMob.getEntity())));
+        craftGPT.toggleWaitingOnAPI(aiMob.getEntity());
     }
 
     public void autoCreateAIMob(Entity entity) {
@@ -903,80 +662,12 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
             @Override
             public void run() {
-                AIMob aiMob = new AIMob();
-                List<ChatMessage> messages = new ArrayList<>();
-                aiMob.setEntityType(entity.getType().toString().toLowerCase());
-
-                // Generate backstory
-                String promptAppendix = craftGPT.getConfig().getString("auto-spawn.prompt-appendix");
-
-                String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
-                String userMessage = "";
-                if (aiMob.getName() == null) {
-                    userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
-                    userMessage = userMessage.replace("%ENTITY_TYPE%", aiMob.getEntityType());
-                } else {
-                    userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
-                    userMessage = userMessage.replace("%ENTITY_TYPE%", aiMob.getEntityType());
-                    userMessage = userMessage.replace("%NAME%", aiMob.getName());
-                }
-
-                String backstory = tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
-
-                if (backstory == null) {
-                    craftGPT.getLogger().warning("Failed to auto-spawn AI mob due to OpenAI error.");
-                    toggleWaitingOnAPI(entity);
-                    return;
-                }
-
-                if (!(promptAppendix == null) || !promptAppendix.isBlank() || !promptAppendix.isEmpty()) {
-                    backstory = backstory + " " + promptAppendix;
-                }
-
-                aiMob.setBackstory(backstory);
-
-                // Generate name
-                String name = tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
-
-                if (name == null) {
-                    craftGPT.getLogger().warning("Failed to auto-spawn AI mob due to OpenAI error.");
-                    toggleWaitingOnAPI(entity);
-                    return;
-                } else {
-                    if (name.substring(name.length() - 1).equals(".")) {
-                        name = name.substring(0, name.length() - 1);
-                    }
-                    aiMob.setName(name);
-                }
-
-                // Generate prompt
-                ChatMessage prompt = generateDefaultPrompt(aiMob);
-                aiMob.setDefaultPrompt(true);
-
-                if (craftGPT.debug) {
-                    craftGPT.getLogger().info("NAME: " + name);
-                    craftGPT.getLogger().info("BACKSTORY: " + backstory);
-                    craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
-                }
-
-                // Set temperature, prefix, entity, and auto-chat
-                Float temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
-                aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("auto-spawn.default-prefix")));
-                aiMob.setEntity(entity);
-                aiMob.setAutoChat(craftGPT.getConfig().getBoolean("auto-chat.auto-spawn-default"));
-
-
-                // Finalize and save
-                messages.add(prompt);
-                aiMob.setTemperature(temperature);
-                aiMob.setMessages(messages);
-                aiMob.setDefaultPrompt(true);
-                createAIMobData(aiMob, entity.getUniqueId().toString());
-                toggleWaitingOnAPI(entity);
-                craftGPT.getLogger().info( "Auto-enabled AI for " + aiMob.getEntityType() + " named " + name + " at " + entity.getLocation());
+                AIMob aiMob = new AIMob(entity, craftGPT);
+                aiMob.buildAutoSpawnAIMob();
+                craftGPT.getLogger().info( "Auto-enabled AI for " + aiMob.getEntityType() + " named " + aiMob.getName() + " at " + entity.getLocation());
             }
         });
-        toggleWaitingOnAPI(entity);
+        craftGPT.toggleWaitingOnAPI(entity);
     }
 
     public void printSpawnedMobData(Player player, Entity entity) {
@@ -990,7 +681,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void removeAIMob(Player player, Entity entity) {
         // Disable AI for clicked mob
         if (craftGPT.chattingPlayers.containsValue(entity)) exitChat(player);
-        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Disabled AI for %s", getMobName(entity)));
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Disabled AI for %s", craftGPT.getAIMob(entity).getName()));
         if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
             entity.setCustomName("");
             entity.setCustomNameVisible(false);
@@ -1015,7 +706,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         }
 
         craftGPT.chattingPlayers.put(player.getUniqueId(), entity);
-        renameMob(entity);
+        craftGPT.renameMob(entity);
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Started chatting with %s!", aiMob.getName()));
 
@@ -1039,7 +730,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s!", craftGPT.craftGPTData.get(craftGPT.chattingPlayers.get(player.getUniqueId()).getUniqueId().toString()).getName()));
         Entity entity = craftGPT.chattingPlayers.get(player.getUniqueId());
         craftGPT.chattingPlayers.remove(player.getUniqueId());
-        renameMob(entity);
+        craftGPT.renameMob(entity);
         craftGPT.saveUsageFileAsync();
 
     }
@@ -1048,15 +739,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Stopped chatting with %s %s", craftGPT.craftGPTData.get(craftGPT.chattingPlayers.get(player.getUniqueId()).getUniqueId().toString()).getName(), reason));
         Entity entity = craftGPT.chattingPlayers.get(player.getUniqueId());
         craftGPT.chattingPlayers.remove(player.getUniqueId());
-        renameMob(entity);
+        craftGPT.renameMob(entity);
         craftGPT.saveUsageFileAsync();
 
     }
 
     public void enterSelecting(Player player, Entity entity) {
-        AIMob mobSelection = new AIMob();
+        AIMob mobSelection = new AIMob(entity, craftGPT);
         if (craftGPT.isAIMob(entity)) mobSelection = craftGPT.getAIMob(entity);
-        else mobSelection.setEntity(entity);
         craftGPT.selectingPlayers.put(player.getUniqueId(), mobSelection);
         String mobName;
         if (mobSelection.getName() == null) {
@@ -1075,6 +765,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     }
 
     public void exitSelecting(Player player) {
+        //fixme: Should probably "delete" the newly created AIMob object if AI was not fully initialized to prevent littering with tons of dead objects
         String mobName;
         Entity entity = craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity();
         if (!craftGPT.isAIMob(entity)) {
@@ -1114,7 +805,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
             List<String> line = new ArrayList<String>();
 
-            toggleWaitingOnAPI(entity);
+            craftGPT.toggleWaitingOnAPI(entity);
 
 
             if (aiMob.isDefaultPrompt()) {
@@ -1144,7 +835,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
                                     craftGPT.getLogger().warning("Failed again with identical error on try number " + (i + 1) + ".");
                                 } else {
-                                    printAPIErrorConsole(e);
+                                    craftGPT.printAPIErrorConsole(e);
                                     errorSignature = e.statusCode + e.type;
                                 }
                             } catch (Exception e) {
@@ -1160,7 +851,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
 
                         if (chatCompletions == null || chatMessageResponse == null) {
-                            toggleWaitingOnAPI(entity);
+                            craftGPT.toggleWaitingOnAPI(entity);
 
                             for (Player recipient : recipients) {
                                 recipient.sendMessage(prefix + ChatColor.RED + "API error! Try again momentarily.");
@@ -1177,7 +868,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
                             if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
                                 craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
-                                toggleWaitingOnAPI(entity);
+                                craftGPT.toggleWaitingOnAPI(entity);
                             }
                             if (craftGPT.debug) {
                                 craftGPT.getLogger().info("=== NOT STREAMED ===");
@@ -1295,7 +986,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
                                     craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
                                     //acuteAI.acuteData.get(entity.getUniqueId().toString()).setTokens(acuteAI.acuteData.get(entity.getUniqueId().toString()).getTokens() + response.toString());
-                                    toggleWaitingOnAPI(entity);
+                                    craftGPT.toggleWaitingOnAPI(entity);
                                 }
                             }
                         });
@@ -1413,7 +1104,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             AIMob aiMob = craftGPT.craftGPTData.get(mob.getUniqueId().toString());
             int chattingRadius = craftGPT.getConfig().getInt("interaction-radius");
             if (player.getWorld().equals(mob.getWorld()) && player.getLocation().distance(mob.getLocation()) < chattingRadius) {
-                if (isWaitingOnAPI(mob)) {
+                if (craftGPT.isWaitingOnAPI(mob)) {
                     event.setCancelled(true);
                     player.sendMessage(CraftGPT.CHAT_PREFIX + "You can only send one message at a time!");
                     return;

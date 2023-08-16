@@ -1,7 +1,6 @@
 package acute.ai;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 public class PlaceholderAPIExpansion extends PlaceholderExpansion {

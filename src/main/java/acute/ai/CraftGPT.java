@@ -5,8 +5,11 @@ import com.google.common.base.Strings;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
+import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.client.OpenAiApi;
+import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 import okhttp3.*;
 import okhttp3.Authenticator;
@@ -21,10 +24,8 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.jetbrains.annotations.Nullable;
 import retrofit2.Retrofit;
 
-import javax.net.SocketFactory;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -282,7 +283,7 @@ public final class CraftGPT extends JavaPlugin {
             public void run() {
                 long start = System.currentTimeMillis();
                 getLogger().info("Connecting to OpenAI...");
-                String response = CraftGPTListener.tryNonChatRequest("Say hi", "Hi!", .1f, 2);
+                String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
                 if (response == null) {
                     getLogger().severe("Tried 3 times and couldn't connect to OpenAI for the error(s) printed above!");
                     getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
@@ -429,6 +430,130 @@ public final class CraftGPT extends JavaPlugin {
         else return false;
     }
 
+    public String tryNonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
+        String errorSignature = null;
+        String response;
+
+        for (int i = 0; i < 3; i++) {
+            try {
+                response = nonChatRequest(systemMessage, userMessage, temp, maxTokens);
+                return response;
+            } catch (OpenAiHttpException e) {
+                if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
+                    getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
+                } else {
+                    printAPIErrorConsole(e);
+                    errorSignature = e.statusCode + e.type;
+                }
+
+            } catch (Exception e) {
+                getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
+                if (!e.getMessage().contains("timeout")) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return null;
+    }
+
+    public String nonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
+        List<ChatMessage> chatMessages = new ArrayList<>();
+        chatMessages.add(new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage));
+        chatMessages.add(new ChatMessage(ChatMessageRole.USER.value(), userMessage));
+        ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
+                .messages(chatMessages)
+                .temperature((double) temp)
+                .maxTokens(maxTokens)
+                .model("gpt-3.5-turbo")
+                .build();
+        return openAIService.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
+    }
+
+    public void printAPIErrorConsole(OpenAiHttpException e) {
+        getLogger().warning("OpenAI API error!");
+        getLogger().warning("Error type: " + e.type);
+        getLogger().warning("OpenAI error code: " + e.statusCode);
+        getLogger().warning("OpenAI error message: " + e.getMessage());
+        if (e.getMessage().contains("quota")) {
+            getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+            getLogger().warning("Using the API *REQUIRES* credits in your account which can either be purchased with a credit card or through a free trial.");
+            getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
+        }
+        else if (e.getMessage().contains("Rate limit reached")) {
+            getLogger().warning("This is most often occurs because the OpenAI free trial credits have a low rate limit of 3 messages/min. You must wait to send messages or add a billing method to your account.");
+        }
+    }
+
+    public void toggleWaitingOnAPI(Entity entity) {
+        if (isWaitingOnAPI(entity)) {
+            waitingOnAPIList.remove(entity.getUniqueId().toString());
+        }
+        else waitingOnAPIList.add(entity.getUniqueId().toString());
+        renameMob(entity);
+    }
+
+    public boolean isWaitingOnAPI(Entity entity) {
+        if (waitingOnAPIList.contains(entity.getUniqueId().toString())) {
+            return true;
+        }
+        else return false;
+    }
+
+    public void renameMob(Entity entity) {
+        if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
+            entity.setCustomNameVisible(true);
+            if (isWaitingOnAPI(entity)) {
+                if (!craftGPTData.containsKey(entity.getUniqueId().toString())) {
+                    // Enabling mob (clock icon)
+                    entity.setCustomName("Enabling..." + ChatColor.YELLOW + " \u231A");
+                } else {
+                    // Waiting on API (clock icon)
+                    entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.YELLOW + " \u231A");
+                }
+
+            }
+            else {
+                if (chattingPlayers.containsValue(entity)) {
+                    // Currently chatting (green lightning bolt)
+                    entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.GREEN + " \u26A1");
+                    // star  "\u2B50"
+                }
+                else {
+                    if (isAIMob(entity)) {
+                        // AI-enabled (blue lightning bolt)
+                        entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.BLUE + " \u26A1");
+                    } else {
+                        entity.setCustomName(null);
+                        entity.setCustomNameVisible(false);
+                    }
+                }
+            }
+        }
+    }
+
+    public ChatMessage generateDefaultPrompt(AIMob aiMob) {
+        String newPrompt = getConfig().getString("prompt.default-system-prompt");
+        newPrompt = newPrompt.replace("%ENTITY_TYPE%", aiMob.getEntityType());
+        newPrompt = newPrompt.replace("%BACKSTORY%", aiMob.getBackstory());
+        if (debug) getLogger().info("PROMPT: " + newPrompt);
+        return new ChatMessage(ChatMessageRole.SYSTEM.value(), newPrompt);
+    }
+
+    public void createAIMobData(AIMob aiMob, String uuid) {
+        if (debug) getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
+        craftGPTData.put(uuid, aiMob);
+        writeData(this);
+    }
+
+    public void printFailureToCreateMob(Player player, Entity entity) {
+        getLogger().severe("Mob at: " + entity.getLocation() + " failed to enable due to error printed above!");
+        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
+        player.sendMessage(ChatColor.RED + "=======================================");
+        player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+        player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");
+        player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
+        player.sendMessage(ChatColor.RED + "=======================================");
+    }
 
 
 }

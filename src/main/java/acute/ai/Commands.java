@@ -20,8 +20,6 @@ import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.StringUtil;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -203,7 +201,7 @@ public class Commands implements TabExecutor {
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                     AIMob aiMob = craftGPT.selectingPlayers.get(player.getUniqueId());
-                                    if (aiMob.isAutoChat() == null || aiMob.isAutoChat() == false)
+                                    if (aiMob.isAutoChat() == null || !aiMob.isAutoChat())
                                         aiMob.setAutoChat(true);
                                     else aiMob.setAutoChat(false);
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "Auto-chat set to " + aiMob.isAutoChat().toString());
@@ -321,12 +319,16 @@ public class Commands implements TabExecutor {
                                 sayNoPermission(player);
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                    if ((craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().isDead())) {
+                                    AIMob mobSelection = craftGPT.selectingPlayers.get(player.getUniqueId());
+                                    if ((mobSelection).getEntity().isDead()) {
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is dead!");
                                         craftGPTListener.toggleSelecting(player, craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity());
                                         return true;
                                     } else if (!craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
-                                        craftGPTListener.playerCreateAIMob(player, craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity());
+                                        if (mobSelection.getEntity().hasMetadata("NPC") || mobSelection.getEntity().isCustomNameVisible()) {
+                                            mobSelection.setName(mobSelection.getEntity().getName());
+                                        }
+                                        craftGPTListener.playerCreateAIMob(player, craftGPT.selectingPlayers.get(player.getUniqueId()));
                                     } else {
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is already AI-enabled!");
                                     }

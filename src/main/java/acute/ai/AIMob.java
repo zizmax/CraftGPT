@@ -1,12 +1,19 @@
 package acute.ai;
 
 import com.theokanning.openai.completion.chat.ChatMessage;
+import com.theokanning.openai.completion.chat.ChatMessageRole;
+import org.bukkit.ChatColor;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
 class AIMob {
+    private transient CraftGPT craftGPT;
     private float temperature;
     private Integer tokens;
     private String name;
@@ -19,6 +26,177 @@ class AIMob {
     private String visibility;
     private String prefix;
     private Boolean autoChat;
+
+    public AIMob(Entity entity, CraftGPT craftGPT) {
+        this.craftGPT = craftGPT;
+        this.entity = entity;
+        this.entityType = entity.getType().toString().toLowerCase();
+
+        //fixme: make sure both player and auto created mobs have ALL fields set between constructor and "builder"
+    }
+
+    private void buildBaseAIMob() {
+        this.messages = new ArrayList<>();
+        if (this.temperature == 0.0f) {
+            this.temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
+        }
+    }
+
+    public void buildPlayerCreatedAIMob(Player player) {
+        buildBaseAIMob();
+
+        // Generate backstory
+        if (this.backstory == null && this.rawPrompt == null) {
+            String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
+            String userMessage;
+            if (this.name == null) {
+                userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
+                userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+            } else {
+                userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
+                userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+                userMessage = userMessage.replace("%NAME%", this.name);
+            }
+
+            String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
+
+            if (response == null) {
+                craftGPT.printFailureToCreateMob(player, entity);
+                craftGPT.toggleWaitingOnAPI(entity);
+                return;
+            } else {
+                player.sendMessage(CraftGPT.CHAT_PREFIX + "Backstory generated!");
+                this.backstory = response;
+            }
+        }
+
+        // Generate name
+        String originalDisplayName = entity.getName();
+        if (this.name == null) {
+
+            if (this.backstory != null) {
+                String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
+                userMessage = userMessage.replace("%BACKSTORY%", this.backstory);
+                this.name = craftGPT.tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
+            }
+            if (this.rawPrompt != null) {
+                this.name = originalDisplayName;
+            }
+
+            if (this.name == null) {
+                craftGPT.printFailureToCreateMob(player, entity);
+                craftGPT.toggleWaitingOnAPI(entity);
+                return;
+            } else {
+                if (this.name.substring(this.name.length() - 1).equals(".")) {
+                    this.name = this.name.substring(0, this.name.length() - 1);
+                }
+                player.sendMessage(CraftGPT.CHAT_PREFIX + "Name generated!");
+            }
+
+        }
+
+        // Generate prompt
+        ChatMessage prompt;
+        if (this.rawPrompt != null) {
+            prompt = new ChatMessage(ChatMessageRole.SYSTEM.value(), this.rawPrompt);
+            this.defaultPrompt = false;
+        }
+        else {
+            prompt = craftGPT.generateDefaultPrompt(this);
+            this.defaultPrompt = true;
+        }
+
+        if (craftGPT.debug) {
+            craftGPT.getLogger().info("NAME: " + name);
+            craftGPT.getLogger().info("BACKSTORY: " + backstory);
+            craftGPT.getLogger().info(String.format("PROMPT: " + prompt));
+        }
+
+
+        if (this.prefix == null) {
+            this.prefix = ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix"));
+        }
+        if (this.autoChat == null) {
+            this.autoChat = craftGPT.getConfig().getBoolean("auto-chat.manual-default");
+        }
+
+        // Finalize and save
+        messages.add(prompt);
+        craftGPT.createAIMobData(this, entity.getUniqueId().toString());
+        craftGPT.toggleWaitingOnAPI(entity);
+        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
+        player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
+        entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
+        entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
+        craftGPT.getLogger().info(player.getName() + " enabled AI for " + this.entityType + " named " + this.name + " at " + entity.getLocation());
+    }
+
+    public void buildAutoSpawnAIMob() {
+        buildBaseAIMob();
+
+        this.prefix = ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("auto-spawn.default-prefix"));
+        this.autoChat = craftGPT.getConfig().getBoolean("auto-chat.auto-spawn-default");
+
+
+        // Generate backstory
+        String promptAppendix = this.craftGPT.getConfig().getString("auto-spawn.prompt-appendix");
+        String systemMessage = this.craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
+        String userMessage;
+        if (this.name == null) {
+            userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
+            userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+        } else {
+            userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
+            userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+            userMessage = userMessage.replace("%NAME%", this.name);
+        }
+        String backstory = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
+
+
+        if (backstory == null) {
+            craftGPT.getLogger().warning("Failed to auto-spawn AI mob due to OpenAI error.");
+            craftGPT.toggleWaitingOnAPI(entity);
+            return;
+        }
+
+        if (!(promptAppendix == null) || !promptAppendix.isBlank() || !promptAppendix.isEmpty()) {
+            backstory = backstory + " " + promptAppendix;
+        }
+
+        this.backstory = backstory;
+
+        // Generate name
+        String name = craftGPT.tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
+
+        if (name == null) {
+            craftGPT.getLogger().warning("Failed to auto-spawn AI mob due to OpenAI error.");
+            craftGPT.toggleWaitingOnAPI(entity);
+            return;
+        } else {
+            if (name.substring(name.length() - 1).equals(".")) {
+                name = name.substring(0, name.length() - 1);
+            }
+            this.name = name;
+        }
+
+        // Generate prompt
+        ChatMessage prompt = craftGPT.generateDefaultPrompt(this);
+        this.defaultPrompt = true;
+
+        if (craftGPT.debug) {
+            craftGPT.getLogger().info("NAME: " + name);
+            craftGPT.getLogger().info("BACKSTORY: " + backstory);
+            craftGPT.getLogger().info(String.format("PROMPT: " + prompt.toString()));
+        }
+
+
+        // Finalize and save
+        messages.add(prompt);
+        craftGPT.createAIMobData(this, entity.getUniqueId().toString());
+        craftGPT.toggleWaitingOnAPI(entity);
+
+    }
 
     public Float getTemperature() {
         return temperature;
@@ -60,8 +238,7 @@ class AIMob {
     }
 
     public boolean isDefaultPrompt() {
-        if (defaultPrompt) return true;
-        else return false;
+        return defaultPrompt;
     }
 
     public void setDefaultPrompt(boolean defaultPrompt) {
@@ -107,5 +284,6 @@ class AIMob {
     public void setAutoChat(Boolean autoChat) {
         this.autoChat = autoChat;
     }
+
 
 }
