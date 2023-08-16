@@ -1044,7 +1044,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
     public static boolean isUnderPlayerLimit(Player player) {
         if (craftGPT.getConfig().getBoolean("usage-reset.enabled")) {
-            if (craftGPT.getUsageFile().getString("last-reset").equals("null") || craftGPT.getUsageFile().getString("last-reset") == null) {
+            if (craftGPT.getUsageFile().getString("last-reset") == null || craftGPT.getUsageFile().getString("last-reset").equals("null")) {
                 craftGPT.getUsageFile().set("last-reset", LocalDateTime.now().toString());
                 craftGPT.saveUsageFile();
             }
