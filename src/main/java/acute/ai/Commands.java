@@ -492,25 +492,9 @@ public class Commands implements TabExecutor {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                     if (craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
                                         AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());
-                                        ItemStack book = new ItemStack(Material.WRITTEN_BOOK);
-                                        BookMeta meta = (BookMeta) book.getItemMeta();
-                                        meta.setTitle(aiMob.getName());
-                                        meta.setAuthor(CraftGPT.CHAT_PREFIX);
-                                        meta.addPage(CraftGPT.CHAT_PREFIX + "\nName: " + ChatColor.GOLD + aiMob.getName()
-                                                + "\n" + ChatColor.GRAY + "Temperature: " + ChatColor.GOLD + aiMob.getTemperature());
-                                        String prompt = "Prompt: " + ChatColor.GOLD + aiMob.getMessages().get(0).getContent();
-                                        List<String> strings = new ArrayList<String>();
-                                        int index = 0;
-                                        while (index < prompt.length()) {
-                                            strings.add(prompt.substring(index, Math.min(index + 249,prompt.length())));
-                                            index += 249;
-                                        }
-                                        for (String page : strings) {
-                                            meta.addPage( ChatColor.GOLD + page);
-                                        }
-                                        book.setItemMeta(meta);
-                                        player.openBook(book);
-                                    } else {
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Name: " + ChatColor.GOLD + aiMob.getName());
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Temperature: " + ChatColor.GOLD + aiMob.getTemperature());
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "System prompt: " + ChatColor.GOLD + aiMob.getMessages().get(0).getContent());
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is NOT AI-enabled!");
                                     }
                                 } else {
