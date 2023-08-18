@@ -31,15 +31,11 @@ class AIMob {
         this.craftGPT = craftGPT;
         this.entity = entity;
         this.entityType = entity.getType().toString().toLowerCase();
-
-        //fixme: make sure both player and auto created mobs have ALL fields set between constructor and "builder"
     }
 
     private void buildBaseAIMob() {
         this.messages = new ArrayList<>();
-        if (this.temperature == 0.0f) {
-            this.temperature = (float) craftGPT.getConfig().getDouble("default-temperature");
-        }
+
     }
 
     public void buildPlayerCreatedAIMob(Player player) {

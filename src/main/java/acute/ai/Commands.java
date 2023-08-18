@@ -240,7 +240,7 @@ public class Commands implements TabExecutor {
                                 sayNoPermission(player);
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                    AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());
+                                    AIMob aiMob = craftGPT.selectingPlayers.get(player.getUniqueId());
                                     if (args.length > 1) {
                                         if (args[1].equals("world")) {
                                             aiMob.setVisibility("world");
@@ -256,24 +256,28 @@ public class Commands implements TabExecutor {
                                         }
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Visibility set to: " + args[1]);
                                     } else {
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + aiMob.getName() + ChatColor.GRAY + " has visibility: " + aiMob.getVisibility());
+                                        player.sendMessage(CraftGPT.CHAT_PREFIX + "Must specify visibility!");
                                     }
                                 } else {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No AI mob selected!");
                                 }
                             }
                         } else if (args[0].equals("displayname")) {
-                            if (args.length > 1) {
-                                String name = "";
-                                for (int i = 1; i < args.length - 1; i++) {
-                                    name = name + args[i] + " ";
+                            if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                if (args.length > 1) {
+                                    String name = "";
+                                    for (int i = 1; i < args.length - 1; i++) {
+                                        name = name + args[i] + " ";
+                                    }
+                                    name = name + args[args.length - 1];
+                                    craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().setCustomNameVisible(true);
+                                    craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().setCustomName(name);
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Name set to: " + ChatColor.GOLD + name);
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "No name provided. Try again!");
                                 }
-                                name = name + args[args.length - 1];
-                                craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().setCustomNameVisible(true);
-                                craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().setCustomName(name);
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + "Name set to: " + ChatColor.GOLD + name);
                             } else {
-                                player.sendMessage(CraftGPT.CHAT_PREFIX + "No name provided. Try again!");
+                                player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
                             }
                         } else if (args[0].equals("iterate")) {
                             if (!player.hasPermission("craftgpt.iterate")) {
@@ -320,7 +324,7 @@ public class Commands implements TabExecutor {
                             } else {
                                 if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
                                     AIMob mobSelection = craftGPT.selectingPlayers.get(player.getUniqueId());
-                                    if ((mobSelection).getEntity().isDead()) {
+                                    if (mobSelection.getEntity().isDead()) {
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob is dead!");
                                         craftGPTListener.toggleSelecting(player, craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity());
                                         return true;
