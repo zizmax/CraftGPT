@@ -2,6 +2,7 @@ package acute.ai;
 
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -121,7 +122,9 @@ class AIMob {
         messages.add(prompt);
         craftGPT.createAIMobData(this, entity.getUniqueId().toString());
         craftGPT.toggleWaitingOnAPI(entity);
-        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "!");
+        TextComponent message = new TextComponent(String.format(CraftGPT.CHAT_PREFIX + "AI successfully enabled for %s", craftGPT.craftGPTData.get(entity.getUniqueId().toString()).getName()) + ChatColor.GRAY + "! ");
+        message.addExtra(craftGPT.getClickableCommandHoverText(net.md_5.bungee.api.ChatColor.YELLOW.toString() + net.md_5.bungee.api.ChatColor.UNDERLINE + "[locate]", "/cg locate", net.md_5.bungee.api.ChatColor.GOLD + "Click me!"));
+        player.spigot().sendMessage(message);
         player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
         entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
         entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);

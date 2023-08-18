@@ -11,6 +11,10 @@ import com.theokanning.openai.completion.chat.ChatCompletionRequest;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import okhttp3.*;
 import okhttp3.Authenticator;
 import org.bstats.bukkit.Metrics;
@@ -553,6 +557,13 @@ public final class CraftGPT extends JavaPlugin {
         player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");
         player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
         player.sendMessage(ChatColor.RED + "=======================================");
+    }
+
+    public TextComponent getClickableCommandHoverText(String message, String command, String hoverText) {
+        TextComponent textComponent = new TextComponent(message);
+        textComponent.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command));
+        textComponent.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new ComponentBuilder(hoverText).create()));
+        return textComponent;
     }
 
 

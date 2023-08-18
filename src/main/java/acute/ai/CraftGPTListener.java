@@ -4,13 +4,18 @@ import com.theokanning.openai.OpenAiHttpException;
 import com.theokanning.openai.Usage;
 import com.theokanning.openai.completion.chat.*;
 import io.reactivex.Flowable;
+import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.apache.commons.lang3.text.WordUtils;
-import org.bukkit.*;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -677,7 +682,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         player.spigot().sendMessage(message);
     }
 
-
     public void removeAIMob(Player player, Entity entity) {
         // Disable AI for clicked mob
         if (craftGPT.chattingPlayers.containsValue(entity)) exitChat(player);
@@ -708,7 +712,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         craftGPT.chattingPlayers.put(player.getUniqueId(), entity);
         craftGPT.renameMob(entity);
         AIMob aiMob = craftGPT.craftGPTData.get(entity.getUniqueId().toString());
-        player.sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Started chatting with %s!", aiMob.getName()));
+        aiMob.setEntity(entity); // Entity is set because the field is not serialized/stored on disk. Setting it on enterSelecting/enterChat is the cleanest way to associate an Entity with an AIMob
+        TextComponent message = new TextComponent(String.format(CraftGPT.CHAT_PREFIX + "Started chatting with %s! ", aiMob.getName()));
+        message.addExtra(craftGPT.getClickableCommandHoverText(ChatColor.YELLOW.toString() + ChatColor.UNDERLINE + "[locate]", "/cg locate", ChatColor.GOLD + "Click me!"));
+        player.spigot().sendMessage(message);
 
         // Write usage data
         if (!craftGPT.getUsageFile().isSet("players")) craftGPT.getUsageFile().createSection("players");
@@ -747,6 +754,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void enterSelecting(Player player, Entity entity) {
         AIMob mobSelection = new AIMob(entity, craftGPT);
         if (craftGPT.isAIMob(entity)) mobSelection = craftGPT.getAIMob(entity);
+        mobSelection.setEntity(entity); // Entity is set because the field is not serialized/stored on disk. Setting it on enterSelecting/enterChat is the cleanest way to associate an Entity with an AIMob
         craftGPT.selectingPlayers.put(player.getUniqueId(), mobSelection);
         String mobName;
         if (mobSelection.getName() == null) {
