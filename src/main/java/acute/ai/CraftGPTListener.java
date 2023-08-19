@@ -108,10 +108,10 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     public void onEntitiesLoad(ChunkLoadEvent event) {
 
         Chunk chunk = event.getChunk();
-        if (chunk.getPersistentDataContainer().has(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN)) {
+        if (chunk.getPersistentDataContainer().has(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.INTEGER)) {
 
             // Chunk has flag and has been evaluated for auto-spawning
-            if (chunk.getPersistentDataContainer().get(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN)) {
+            if (chunk.getPersistentDataContainer().get(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.INTEGER) == 1) {
                 // Do nothing
             }
 
@@ -137,7 +137,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 worlds.add(craftGPT.getServer().getWorld(worldName));
             }
             if (worlds.contains(event.getChunk().getWorld())) {
-                event.getChunk().getPersistentDataContainer().set(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.BOOLEAN, true);
+                event.getChunk().getPersistentDataContainer().set(craftGPT.autoSpawnChunkFlagKey, PersistentDataType.INTEGER, 1);
                 List<Entity> entities = List.of(event.getChunk().getEntities());
                 if (entities.size() > 0) {
                     for (Entity entity : entities) {
