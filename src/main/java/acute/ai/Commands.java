@@ -33,7 +33,7 @@ public class Commands implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "auto-chat", "clearUsageFile", "locate");
+        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "auto-chat", "clearUsageFile", "locate", "tphere", "tpto");
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
@@ -565,6 +565,35 @@ public class Commands implements TabExecutor {
 
                                 } else {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + "No mob selected!");
+                                }
+                            }
+                        } else if (args[0].equals("tphere") || args[0].equals("tpto")) {
+                            if (!player.hasPermission("craftgpt." + command)) {
+                                sayNoPermission(player);
+                            } else {
+                                if (craftGPT.isChatting(player) || craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                    Entity entity = null;
+                                    AIMob aiMob = null;
+                                    if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
+                                        aiMob = craftGPT.selectingPlayers.get(player.getUniqueId());
+                                        if (aiMob != null) {
+                                            entity = aiMob.getEntity();
+                                        }
+                                    } else {
+                                        entity = craftGPT.chattingPlayers.get(player.getUniqueId());
+                                        aiMob = craftGPT.getAIMob(entity);
+                                    }
+                                    if (entity != null && aiMob != null) {
+                                        if (args[0].equals("tphere")) {
+                                            entity.teleport(player.getLocation());
+                                            player.sendMessage(CraftGPT.CHAT_PREFIX + "Mob teleported to you!");
+                                        } else if (args[0].equals("tpto")) {
+                                            player.teleport(entity.getLocation());
+                                            player.sendMessage(CraftGPT.CHAT_PREFIX + "You teleported to the Mob");
+                                        }
+                                    }
+                                } else {
+                                    player.sendMessage(CraftGPT.CHAT_PREFIX + "Unable to teleport, make sure a mob is selected.");
                                 }
                             }
                         } else {
