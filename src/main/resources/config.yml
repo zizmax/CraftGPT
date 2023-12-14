@@ -253,3 +253,105 @@ events:
   npc-hurt-drowning:
     chance: 20
     message: "you just took damage from drowning"
+
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                          Messages                                            | #
+# |                                                                                              | #
+# |                                 Customize in-game messages                                   | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+messages:
+  help:
+    header: "&e==========| &7CraftGPT Help &e|=========="
+    join-discord: "Join the Discord "
+    cg-wand: "&c/cg wand &7Get a magic wand"
+    cg-stop: "&c/cg stop &7Exit chat mode"
+    cg-reload: "&c/cg reload &7Reload config.yml and plugin data"
+    cg-create: "&c/cg create &7Enable AI for selected mob"
+    cg-remove: "&c/cg remove &7Remove Ai for selected mob"
+    cg-clearMobBuilder: "&c/cg clearMobBuilder &7Clear mob-builder settings"
+  reload:
+    debug-mode: "Debug mode enabled"
+    success: "Config reloaded successfully"
+    updates: "Checking for updates..."
+  no-permission: "You do not have permission to do that!"
+  commands:
+    no-api: "WARNING: CraftGPT is not connected to OpenAI! Most features of the plugin will not work! See console logs for error details."
+    malformed-command-1: "Malformed command or must run command as player!"
+    malformed-command-2: "Malformed command! Try &c/cg help"
+    key-required: "CraftGPT requires an OpenAI API key set in the config!"
+    craftgpt-no-console: "Cannot use /craftgpt as console!"
+    api-connected:
+      no-aimob-selected: "No AI mob selected!"
+      no-aimob-chatting: "No AI mob chatting/selected!"
+      no-mob-selected: "No mob selected!"
+      ai-already-enabled: "Mob is already AI-enabled!"
+      ai-not-enabled: "Mob is not AI-enabled!"
+      prefix:
+        set: "Prefix set to:"
+        not-set: "&cWARNING: %NAME% not set in prefix so mob's name will not appear!"
+      auto-chat:
+        set: "Auto-chat set to: "
+      locate:
+        highlight: " highlighted for 10 sec!"
+      visibility:
+        unrecognized: "Unrecognized visibility!"
+        set: "Visibility set to: "
+        specify: "Must specify visibility!"
+      displayname:
+        set: "Name set to: "
+        not-set: "No name provided. Try again!"
+      iterate:
+        coming-soon: "Coming soon."
+      save:
+        success: "Saved data.json!"
+      wand:
+        name: "Magic Wand"
+        help: "&7Click mobs to toggle selection!"
+      stop:
+        not-set: "Not currently chatting"
+      create:
+        dead: "Mob is dead!"
+      remove:
+      clearMobBuilder:
+        already-created: "AI mob already created! Use &c/cg remove &7to remove AI from a mob."
+        success: "AI mob builder cleared!"
+      name:
+        set: "Name set to: "
+        not-set: "No name provided. Try again!"
+      temperature:
+        set: "Temperature set to: "
+        not-set-number: "is not a number"
+        not-set-temp: "No temperature provided. Try again!"
+      backstory:
+        null-prompt: "Can't provide a backstory with a raw prompt!"
+        set: "Backstory set to: "
+        not-set: "No backstory provided. Try again!"
+      rawprompt:
+        null-backstory: "Can't provide a raw prompt with a backstory!"
+        set: "Raw prompt set to: "
+        not-set: "No prompt provided. Try again!"
+      info:
+        name: "Name: "
+        temp: "Temperature: "
+        system-prompt: "System prompt: "
+      clearUsageFile:
+        success: "Usage file cleared and reloaded!"
+      debug:
+        enter: "You are now in debug mode!"
+        exit: "You have exited debug mode!"
+      usage:
+      dryrun:
+        border: "+++++++++++++++++++++++++++++++++++++++++"
+        selected: "Dry run for selected "
+        name: "Name: "
+        temp: "Temperature: "
+        backstory: "Backstory: "
+        chatgpt: "ChatGPT"
+        rawprompt: "Raw Prompt: "
+      tp:
+        tphere-success: "Mob teleported to you!"
+        tpto-success: "You teleported to the Mob!"
+        tp-fail: "Unable to teleport, make sure a mob is selected."
