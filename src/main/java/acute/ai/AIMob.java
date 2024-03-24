@@ -3,6 +3,7 @@ package acute.ai;
 import com.theokanning.openai.completion.chat.ChatMessage;
 import com.theokanning.openai.completion.chat.ChatMessageRole;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -127,8 +128,14 @@ class AIMob {
         player.spigot().sendMessage(message);
         player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
         entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
-        entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
         craftGPT.getLogger().info(player.getName() + " enabled AI for " + this.entityType + " named " + this.name + " at " + entity.getLocation());
+        Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
+            // Sounds can't be played async
+            @Override
+            public void run() {
+                entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
+            }
+        }, 1L);
     }
 
     public void buildAutoSpawnAIMob() {
