@@ -29,6 +29,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import retrofit2.Retrofit;
+import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
+import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -53,6 +55,8 @@ public final class CraftGPT extends JavaPlugin {
     public NamespacedKey magicWandKey = new NamespacedKey(this, "secret");
 
     public NamespacedKey autoSpawnChunkFlagKey = new NamespacedKey(this, "chunk-flag");
+
+    public String aiProvider = "OpenAI";
 
     public boolean debug = false;
     public boolean apiKeySet = false;
@@ -270,15 +274,25 @@ public final class CraftGPT extends JavaPlugin {
                         .build();
             }
 
-            getLogger().info("Connecting to OpenAI via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
+            getLogger().info("Connecting to " + aiProvider + " via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
 
         } else {
             client = defaultClient(key, timeout)
                     .newBuilder()
                     .build();
         }
-        Retrofit retrofit = defaultRetrofit(client, mapper);
+
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(getConfig().getString("base-url"))
+                .client(client)
+                .addConverterFactory(JacksonConverterFactory.create(mapper))
+                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
+                .build();
+
+        if (!retrofit.baseUrl().toString().equals("https://api.openai.com/")) aiProvider = (retrofit.baseUrl().toString());
+
         OpenAiApi api = retrofit.create(OpenAiApi.class);
+
         openAIService = new OpenAiService(api);
 
 
@@ -286,14 +300,14 @@ public final class CraftGPT extends JavaPlugin {
             @Override
             public void run() {
                 long start = System.currentTimeMillis();
-                getLogger().info("Connecting to OpenAI...");
+                getLogger().info("Connecting to API (" + retrofit.baseUrl() + ")...");
                 String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
                 if (response == null) {
-                    getLogger().severe("Tried 3 times and couldn't connect to OpenAI for the error(s) printed above!");
+                    getLogger().severe("Tried 3 times and couldn't connect to " + aiProvider + " for the error(s) printed above!");
                     getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
                 } else {
                     long end = System.currentTimeMillis();
-                    getLogger().info("Connected to OpenAI!" + " (" +  ((end-start) / 1000f) + "s)");
+                    getLogger().info("Connected to " + aiProvider + "!" + " (" +  ((end-start) / 1000f) + "s)");
                     apiConnected = true;
                 }
             }
@@ -451,7 +465,7 @@ public final class CraftGPT extends JavaPlugin {
                 }
 
             } catch (Exception e) {
-                getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
+                getLogger().warning(String.format("[Try %s] Non-API error: " + e.getMessage(), i));
                 if (!e.getMessage().contains("timeout")) {
                     e.printStackTrace();
                 }
@@ -468,16 +482,16 @@ public final class CraftGPT extends JavaPlugin {
                 .messages(chatMessages)
                 .temperature((double) temp)
                 .maxTokens(maxTokens)
-                .model("gpt-3.5-turbo")
+                .model(getConfig().getString("model"))
                 .build();
         return openAIService.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
     }
 
     public void printAPIErrorConsole(OpenAiHttpException e) {
-        getLogger().warning("OpenAI API error!");
+        getLogger().warning("API error!");
         getLogger().warning("Error type: " + e.type);
-        getLogger().warning("OpenAI error code: " + e.statusCode);
-        getLogger().warning("OpenAI error message: " + e.getMessage());
+        getLogger().warning("API error code: " + e.statusCode);
+        getLogger().warning("API error message: " + e.getMessage());
         if (e.getMessage().contains("quota")) {
             getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
             getLogger().warning("Using the API *REQUIRES* credits in your account which can either be purchased with a credit card or through a free trial.");
@@ -551,7 +565,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public void printFailureToCreateMob(Player player, Entity entity) {
         getLogger().severe("Mob at: " + entity.getLocation() + " failed to enable due to error printed above!");
-        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: OpenAI API failure!");
+        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: API failure!");
         player.sendMessage(ChatColor.RED + "=======================================");
         player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
         player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");

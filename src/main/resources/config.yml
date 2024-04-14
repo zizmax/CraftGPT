@@ -34,6 +34,8 @@ api_key: "API KEY HERE"
 default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
 timeout: 10 # Seconds before the HTTP connection times out and the request is retried
+base-url: "https://api.openai.com/"
+model: "gpt-3.5-turbo"
 proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks OpenAI.
   enabled: false
   host: "0.0.0.0"

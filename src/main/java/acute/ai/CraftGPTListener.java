@@ -25,7 +25,7 @@ import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.spigotmc.event.entity.EntityMountEvent;
+import org.bukkit.event.entity.EntityMountEvent;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -823,7 +823,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                     .messages(chatMessagesToSend)
                     .temperature((double) aiMob.getTemperature())
-                    .model("gpt-3.5-turbo")
+                    .model(craftGPT.getConfig().getString("model"))
                     .build();
 
             if (!craftGPT.getConfig().getBoolean("stream-responses")) {
