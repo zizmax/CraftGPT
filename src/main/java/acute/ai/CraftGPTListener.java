@@ -25,7 +25,6 @@ import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.event.entity.EntityMountEvent;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -213,16 +212,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
             String eventMessage = String.format(rawMessage, event.getEntity().getType().toString().toLowerCase(), event.getEntity().getType().toString().toLowerCase());
             handlePlayerEventReaction((Player) event.getBreeder(), name, eventMessage);
-        }
-    }
-
-    @EventHandler(priority = EventPriority.MONITOR)
-    public void onPlayerMount(EntityMountEvent event) {
-        if (event.getEntity() instanceof Player && !event.isCancelled()) {
-            String name = "player-mount";
-            String rawMessage = craftGPT.getConfig().getString("events." + name + ".message");
-            String eventMessage = String.format(rawMessage, event.getMount().getType().toString().toLowerCase());
-            handlePlayerEventReaction((Player) event.getEntity(), name, eventMessage);
         }
     }
 
