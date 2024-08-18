@@ -35,7 +35,7 @@ default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
 timeout: 10 # Seconds before the HTTP connection times out and the request is retried
 base-url: "https://api.openai.com/"
-model: "gpt-3.5-turbo"
+model: "gpt-4o"
 proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks OpenAI.
   enabled: false
   host: "0.0.0.0"
@@ -70,6 +70,7 @@ auto-spawn:
 # With this enabled, AI mobs with the auto-chat flag will automatically enter chat mode and react when a player approaches nearby
 auto-chat:
   enabled: false
+  auto-end: true # Chats will end player leaves chat radius
   auto-spawn-default: true # Should auto-spawned mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
   manual-default: false # Should manually-created mobs have auto-chat set to true by default? If false, you can enable auto-chat per mob using /cg auto-chat
   radius: 20 # Setting this too high will cause lag!
@@ -265,6 +266,28 @@ events:
 # +----------------------------------------------------------------------------------------------+ #
 
 messages:
+  chat:
+    start:
+      text: "Started chatting with %s! "
+      locate:
+        text: "[locate]"
+        hover: "Click me!"
+    stop:
+      text: "Stopped chatting with %s!"
+      stop-with-reason: "Stopped chatting with %s %s"
+      death-reason: "because entity died."
+    error:
+      global-limit: "Server has reached global chat usage limit!"
+      player-limit: "You have reached your usage limit!"
+      no-api: "No API key set! Set one in config.yml"
+  selecting:
+    selected: "Selected %s"
+    unselected: "Unselected %s"
+    while-sneaking: "Can't use magic wand while sneaking!"
+  mob-ai-status:
+    disabled: "Disabled AI for %s"
+
+
   help:
     header: "&e==========| &7CraftGPT Help &e|=========="
     join-discord: "Join the Discord "
