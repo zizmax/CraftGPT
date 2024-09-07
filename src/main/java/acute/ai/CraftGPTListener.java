@@ -198,7 +198,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         if (craftGPT.craftGPTData.containsKey(event.getEntity().getUniqueId().toString())) {
             for (Player player : craftGPT.getServer().getOnlinePlayers()) {
                 if (craftGPT.chattingPlayers.containsKey(player.getUniqueId()) && craftGPT.chattingPlayers.get(player.getUniqueId()).equals(event.getEntity())) {
-                    exitChat(player, craftGPT.getConfig().getString("messages.chat.death-reason"));
+                    exitChat(player, craftGPT.getConfig().getString("messages.chat.stop.death-reason"));
                     removeAIMob(player, event.getEntity());
                 }
             }
