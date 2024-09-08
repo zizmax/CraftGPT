@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
@@ -129,6 +130,74 @@ class AIMob {
         player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
         entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
         craftGPT.getLogger().info(player.getName() + " enabled AI for " + this.entityType + " named " + this.name + " at " + entity.getLocation());
+        Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
+            // Sounds can't be played async
+            @Override
+            public void run() {
+                entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
+            }
+        }, 1L);
+    }
+
+    public void buildConsoleCreatedAIMob() {
+        buildBaseAIMob();
+
+        // Generate backstory
+        this.name = entity.getName();
+        if (this.backstory == null && this.rawPrompt == null) {
+            String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
+            String userMessage;
+
+            userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
+            userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+            userMessage = userMessage.replace("%NAME%", this.name);
+
+
+            String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
+
+            if (response == null) {
+                //craftGPT.printFailureToCreateMob(player, entity);
+                Bukkit.getConsoleSender().sendMessage(CraftGPT.CHAT_PREFIX + "Failed to create mob!");
+
+                craftGPT.toggleWaitingOnAPI(entity);
+                return;
+            } else {
+                Bukkit.getConsoleSender().sendMessage(CraftGPT.CHAT_PREFIX + "Backstory generated!");
+                this.backstory = response;
+            }
+        }
+
+        // Generate prompt
+        ChatMessage prompt;
+        if (this.rawPrompt != null) {
+            prompt = new ChatMessage(ChatMessageRole.SYSTEM.value(), this.rawPrompt);
+            this.defaultPrompt = false;
+        }
+        else {
+            prompt = craftGPT.generateDefaultPrompt(this);
+            this.defaultPrompt = true;
+        }
+
+        if (craftGPT.debug) {
+            craftGPT.getLogger().info("NAME: " + name);
+            craftGPT.getLogger().info("BACKSTORY: " + backstory);
+            craftGPT.getLogger().info(String.format("PROMPT: " + prompt));
+        }
+
+
+        if (this.prefix == null) {
+            this.prefix = ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix"));
+        }
+        if (this.autoChat == null) {
+            this.autoChat = craftGPT.getConfig().getBoolean("auto-chat.manual-default");
+        }
+
+        // Finalize and save
+        messages.add(prompt);
+        craftGPT.createAIMobData(this, entity.getUniqueId().toString());
+        craftGPT.toggleWaitingOnAPI(entity);
+
+        craftGPT.getLogger().info("Console enabled AI for " + this.entityType + " named " + this.name + " at " + entity.getLocation());
         Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
             // Sounds can't be played async
             @Override

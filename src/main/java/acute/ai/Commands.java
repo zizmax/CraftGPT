@@ -22,7 +22,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.util.StringUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class Commands implements TabExecutor {
 
@@ -118,6 +120,50 @@ public class Commands implements TabExecutor {
 
 
         }
+    }
+
+    public void consoleCreateCommand(CommandSender sender, String[] args) {
+        CraftGPTListener craftGPTListener = new CraftGPTListener(craftGPT);
+
+        if (!(sender instanceof ConsoleCommandSender)) {
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "This command can only be run from the console.");
+            return;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "Usage: cg consoleCreate <UUID> [rawprompt]");
+            return;
+        }
+
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(args[1]);
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "Invalid UUID format.");
+            return;
+        }
+
+        Entity entity = Bukkit.getEntity(uuid);
+        if (entity == null) {
+            sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "No entity found with the specified UUID.");
+            return;
+        }
+
+        AIMob aiMob = craftGPT.getAIMob(entity);
+        if (aiMob == null) {
+            aiMob = new AIMob(entity, craftGPT);
+        }
+
+        if (args.length > 2) {
+            // Concatenate the rawprompt from the remaining args
+            String rawPrompt = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
+            aiMob.setRawPrompt(rawPrompt);
+            craftGPTListener.consoleCreateAIMob(aiMob);
+        } else {
+            // Auto-generate backstory using existing methodology
+            craftGPTListener.autoCreateAIMob(entity);
+        }
+        sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + "AI-enabled mob created successfully.");
     }
 
     public void sendUpdateMessage(CommandSender sender, UpdateChecker.UpdateResult result) {
@@ -604,6 +650,12 @@ public class Commands implements TabExecutor {
                         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.YELLOW + "====| " + ChatColor.GRAY + "Author: zizmax");
                     }
                 } else {
+                    if (args.length > 0) {
+                        if (args[0].equalsIgnoreCase("consoleCreate")) {
+                            consoleCreateCommand(sender, args);
+                            return true;
+                        }
+                    }
                     sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.craftgpt-no-console")));
                 }
             }

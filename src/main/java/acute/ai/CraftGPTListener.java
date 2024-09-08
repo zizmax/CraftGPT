@@ -677,6 +677,17 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
         craftGPT.toggleWaitingOnAPI(entity);
     }
 
+    public void consoleCreateAIMob(AIMob aiMob) {
+        Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
+            @Override
+            public void run() {
+                aiMob.buildConsoleCreatedAIMob();
+            }
+        });
+        Bukkit.getConsoleSender().sendMessage(String.format(CraftGPT.CHAT_PREFIX + "Enabling AI for %s...", getMobName(aiMob.getEntity())));
+        craftGPT.toggleWaitingOnAPI(aiMob.getEntity());
+    }
+
     public void printSpawnedMobData(Player player, Entity entity) {
         TextComponent message = new TextComponent(entity.getType() + ": " + craftGPT.getAIMob(entity).getName());
         message.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/tp " + player.getName() + " " + entity.getLocation().getX() + " " + entity.getLocation().getY() + " " + entity.getLocation().getZ()));
