@@ -103,11 +103,12 @@ public final class CraftGPT extends JavaPlugin {
         // Register events
         getServer().getPluginManager().registerEvents(new CraftGPTListener(this), this);
 
+
         try {
             if (classExists("org.bukkit.event.entity.EntityMountEvent")) {
-                getServer().getPluginManager().registerEvents(new EntityMountEventListener(this), this);
+                getServer().getPluginManager().registerEvents(new EntityMountEventListener(this, new CraftGPTListener(this)), this);
             } else {
-                getLogger().warning("EntityMountEvent not found. Mounting/riding entities will not be tracked.");
+                getLogger().warning("EntityMountEvent not available in versions < 1.20.5. Mounting/riding entities will not be tracked by CraftGPT.");
             }
         } catch (Exception e) {
             getLogger().severe("Failed to register EntityMountListener.");
