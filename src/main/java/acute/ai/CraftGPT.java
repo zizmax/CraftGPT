@@ -452,8 +452,7 @@ public final class CraftGPT extends JavaPlugin {
 
 
     public boolean isAIMob(Entity entity) {
-        if (craftGPTData.containsKey(entity.getUniqueId().toString())) return true;
-        else return false;
+        return craftGPTData != null && craftGPTData.containsKey(entity.getUniqueId().toString());
     }
 
     public AIMob getAIMob(Entity entity) {
