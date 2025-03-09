@@ -142,15 +142,21 @@ class AIMob {
     public void buildConsoleCreatedAIMob() {
         buildBaseAIMob();
 
+        this.autoChat = true;
+
         // Generate backstory
-        this.name = entity.getName();
-        if (this.backstory == null && this.rawPrompt == null) {
+        if (this.rawPrompt == null) {
             String systemMessage = craftGPT.getConfig().getString("prompt.backstory-writer-system-prompt");
             String userMessage;
 
-            userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
-            userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
-            userMessage = userMessage.replace("%NAME%", this.name);
+            if (this.name == null) {
+                userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-unnamed");
+                userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+            } else {
+                userMessage = craftGPT.getConfig().getString("prompt.backstory-prompt-named");
+                userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
+                userMessage = userMessage.replace("%NAME%", this.name);
+            }
 
 
             String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
@@ -165,6 +171,27 @@ class AIMob {
                 Bukkit.getConsoleSender().sendMessage(CraftGPT.CHAT_PREFIX + "Backstory generated!");
                 this.backstory = response;
             }
+        }
+
+        // Generate name
+        if (this.name == null) {
+
+            if (this.backstory != null) {
+                String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
+                userMessage = userMessage.replace("%BACKSTORY%", this.backstory);
+                this.name = craftGPT.tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
+            }
+
+            if (this.name == null) {
+                Bukkit.getConsoleSender().sendMessage(CraftGPT.CHAT_PREFIX + "Failed to create mob!");
+                craftGPT.toggleWaitingOnAPI(entity);
+                return;
+            } else {
+                if (this.name.substring(this.name.length() - 1).equals(".")) {
+                    this.name = this.name.substring(0, this.name.length() - 1);
+                }
+            }
+
         }
 
         // Generate prompt

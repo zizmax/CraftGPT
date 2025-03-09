@@ -154,16 +154,17 @@ public class Commands implements TabExecutor {
             aiMob = new AIMob(entity, craftGPT);
         }
 
+        if (entity.getCustomName() != null) {
+            aiMob.setName(entity.getCustomName());
+        }
+
         if (args.length > 2) {
             // Concatenate the rawprompt from the remaining args
             String rawPrompt = String.join(" ", Arrays.copyOfRange(args, 2, args.length));
             aiMob.setRawPrompt(rawPrompt);
-            craftGPTListener.consoleCreateAIMob(aiMob);
-        } else {
-            // Auto-generate backstory using existing methodology
-            craftGPTListener.autoCreateAIMob(entity);
         }
-        sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + "AI-enabled mob created successfully.");
+        craftGPTListener.consoleCreateAIMob(aiMob);
+        sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.GREEN + "Creating mob...");
     }
 
     public void sendUpdateMessage(CommandSender sender, UpdateChecker.UpdateResult result) {
@@ -188,7 +189,7 @@ public class Commands implements TabExecutor {
             }
 
             // Commands that can be run with no API key
-            if (!craftGPT.apiKeySet || sender instanceof ConsoleCommandSender) {
+            if (!craftGPT.apiKeySet) {
                 if (args.length > 0) {
                     if (args[0].equals("help")) {
                         helpCommand(sender);
@@ -654,6 +655,11 @@ public class Commands implements TabExecutor {
                         if (args[0].equalsIgnoreCase("consoleCreate")) {
                             consoleCreateCommand(sender, args);
                             return true;
+                        }
+                        else if (args[0].equals("help")) {
+                            helpCommand(sender);
+                        } else if (args[0].equals("reload")) {
+                            reloadCommand(sender);
                         }
                     }
                     sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.craftgpt-no-console")));

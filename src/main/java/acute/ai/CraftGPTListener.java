@@ -57,7 +57,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
 
-        if (event.getItem() != null && event.getItem().getType() != null) {
+        if (event.getItem() != null) {
             if (craftGPT.debug) {
                 if (event.getItem().getType().equals(Material.STICK)) {
                     int i = Integer.parseInt(event.getItem().getItemMeta().getDisplayName());
@@ -73,7 +73,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                     event.getItem().setItemMeta(meta);
                 }
             }
-            if (event.getItem().getItemMeta().getPersistentDataContainer().has(craftGPT.magicWandKey, PersistentDataType.STRING)) {
+            if (event.getItem().hasItemMeta() && event.getItem().getItemMeta() != null && event.getItem().getItemMeta().getPersistentDataContainer().has(craftGPT.magicWandKey, PersistentDataType.STRING)) {
                 event.setCancelled(true);
             }
         }
