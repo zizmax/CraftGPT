@@ -3,7 +3,7 @@
 **A new era for video games**
 --------
 
-CraftGPT adds [OpenAI's ChatGPT](https://chat.openai.com/) to Minecraft, enabling you to turn any mob into a sentient creature with a personality and infinite dialogue.
+CraftGPT adds AI-powered chat to Minecraft, enabling you to turn any mob into a sentient creature with a personality and infinite dialogue. Supports multiple AI providers including OpenAI, Claude, Gemini, and local models.
 
 > [![Discord](https://i.imgur.com/2nu7We9.png)](https://discord.gg/BXhUUQEymg) Join our [Discord](https://discord.gg/BXhUUQEymg)!
 
@@ -12,9 +12,10 @@ CraftGPT adds [OpenAI's ChatGPT](https://chat.openai.com/) to Minecraft, enablin
 Features
 --------
 * **Unlimited characters:** Automatically creates unique names and personalities for every AI-mob
-* **Living characters:** AI-mobs react to what's happening around them.
+* **Living characters:** AI-mobs react to what's happening around them
 * **Infinite interactions:** You can chat with any AI-mob forever
-* **Customization:** You can create custom AI-mobs and have granular control over OpenAI model parameters.
+* **Customization:** You can create custom AI-mobs and have granular control over AI model parameters
+* **Multi-provider support:** Use OpenAI, Claude, Gemini, or local models with Ollama
 
 ------
 ⚠️ **WARNING:** ⚠️ _CraftGPT is ALPHA software, actively being developed._ 
@@ -29,10 +30,48 @@ Installation and Configuration:
 
 Installation:
 -------
-* Get an API key from OpenAI. (This is REQUIRED).
-* Drag and drop the .jar into /plugins folder and restart server.
+* Get an API key from your preferred AI provider (OpenAI, Claude, Gemini, or use Ollama locally)
+* Drag and drop the .jar into /plugins folder and restart server
 * Paste API key into config.yml
+* Configure your preferred AI provider and model in config.yml
 * Done!
+
+AI Provider Configuration:
+-------
+Configure the AI provider in `config.yml`:
+
+```yaml
+ai:
+  provider: "OpenAI" # Options: OpenAI, Claude, Gemini, Ollama
+  model: "gpt-4o" # Model ID for the selected provider
+  secondary_param: "" # Secondary parameter - depends on provider:
+                      # - OpenAI: Not used
+                      # - Claude: Not used
+                      # - Gemini: Project ID
+                      # - Ollama: Host URL (default: http://localhost:11434)
+```
+
+### OpenAI
+- Set `provider: "OpenAI"`
+- Set `model` to a valid OpenAI model (e.g., "gpt-4o", "gpt-3.5-turbo")
+- Set `api_key` to your OpenAI API key
+
+### Claude (Anthropic)
+- Set `provider: "Claude"`
+- Set `model` to a valid Claude model (e.g., "claude-3-opus-20240229", "claude-3-sonnet-20240229")
+- Set `api_key` to your Anthropic API key
+
+### Gemini (Google)
+- Set `provider: "Gemini"`
+- Set `model` to a valid Gemini model (e.g., "gemini-1.5-pro", "gemini-1.0-pro")
+- Set `api_key` to your Google AI API key
+- Set `secondary_param` to your Google Cloud project ID
+
+### Ollama (Local Models)
+- Set `provider: "Ollama"`
+- Set `model` to a valid Ollama model (e.g., "llama3", "mistral")
+- Set `secondary_param` to your Ollama host URL (default: "http://localhost:11434")
+- Note: No API key required for Ollama
 
 How to use:
 ------

@@ -57,11 +57,13 @@ public final class CraftGPT extends JavaPlugin {
     public NamespacedKey autoSpawnChunkFlagKey = new NamespacedKey(this, "chunk-flag");
 
     public String aiProvider = "OpenAI";
-
+    public String aiModel = "";
+    
     public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
     public OpenAiService openAIService;
+    public acute.ai.service.AIService aiService;
 
     public static final Random random = new Random();
 
@@ -253,6 +255,10 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void enableOpenAI() {
+        connectToAIProvider();
+    }
+    
+    public void connectToAIProvider() {
         String key = getConfig().getString("api_key");
         if (key == null || key.length() < 15) {
             getLogger().severe("No API key specified in config! Must set an API key for CraftGPT to work!");
@@ -261,78 +267,50 @@ public final class CraftGPT extends JavaPlugin {
         else {
             apiKeySet = true;
         }
-
-        // Create HTTP client and OpenAI connection with configurable proxy and timeout
-        ObjectMapper mapper = defaultObjectMapper();
-        OkHttpClient client;
-        Duration timeout = Duration.ofSeconds(getConfig().getInt("timeout"));
-        if (getConfig().getBoolean("proxy.enabled")) {
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(getConfig().getString("proxy.host"), getConfig().getInt("proxy.port")));
-            if (getConfig().getBoolean("proxy.authentication.enabled")) {
-
-                getLogger().info("Authenticating to HTTP proxy...");
-                Authenticator proxyAuthenticator = new Authenticator() {
-
-                    @Override
-                    public Request authenticate(Route route, Response response) throws IOException {
-                        String credential = Credentials.basic(getConfig().getString("proxy.authentication.username"), getConfig().getString("proxy.authentication.password"));
-                        return response.request().newBuilder()
-                                .header("Proxy-Authorization", credential)
-                                .build();
+        
+        // Get provider settings from config
+        aiProvider = getConfig().getString("ai.provider", "OpenAI");
+        aiModel = getConfig().getString("ai.model", "gpt-4o");
+        String secondaryParam = getConfig().getString("ai.secondary_param", "");
+        String baseUrl = getConfig().getString("base-url", "https://api.openai.com/");
+        
+        getLogger().info("Setting up " + aiProvider + " provider with model: " + aiModel);
+        
+        try {
+            // Create the appropriate AI service based on the provider
+            aiService = acute.ai.service.AIServiceFactory.createService(
+                    aiProvider, 
+                    key, 
+                    // Use secondary param if available, otherwise use base-url
+                    secondaryParam != null && !secondaryParam.trim().isEmpty() ? secondaryParam : baseUrl
+            );
+            
+            // Create the adapter to make the AI service compatible with the OpenAiService interface
+            openAIService = new acute.ai.service.AIServiceAdapter(aiService);
+            
+            // Test the connection
+            new BukkitRunnable() {
+                @Override
+                public void run() {
+                    long start = System.currentTimeMillis();
+                    getLogger().info("Connecting to " + aiProvider + " API...");
+                    
+                    String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
+                    if (response == null) {
+                        getLogger().severe("Tried 3 times and couldn't connect to " + aiProvider + " for the error(s) printed above!");
+                        getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
+                    } else {
+                        long end = System.currentTimeMillis();
+                        getLogger().info("Connected to " + aiProvider + "!" + " (" + ((end-start) / 1000f) + "s)");
+                        apiConnected = true;
                     }
-                };
-
-                client = defaultClient(key, timeout)
-                        .newBuilder()
-                        .proxyAuthenticator(proxyAuthenticator)
-                        .proxy(proxy)
-                        .build();
-
-            } else {
-                client = defaultClient(key, timeout)
-                        .newBuilder()
-                        .proxy(proxy)
-                        .build();
-            }
-
-            getLogger().info("Connecting to " + aiProvider + " via proxy (" + getConfig().getString("proxy.host") + ":" + getConfig().getInt("proxy.port") + ")...");
-
-        } else {
-            client = defaultClient(key, timeout)
-                    .newBuilder()
-                    .build();
-        }
-
-        Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl(getConfig().getString("base-url"))
-                .client(client)
-                .addConverterFactory(JacksonConverterFactory.create(mapper))
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .build();
-
-        if (!retrofit.baseUrl().toString().equals("https://api.openai.com/")) aiProvider = (retrofit.baseUrl().toString());
-
-        OpenAiApi api = retrofit.create(OpenAiApi.class);
-
-        openAIService = new OpenAiService(api);
-
-
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                long start = System.currentTimeMillis();
-                getLogger().info("Connecting to API (" + retrofit.baseUrl() + ")...");
-                String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
-                if (response == null) {
-                    getLogger().severe("Tried 3 times and couldn't connect to " + aiProvider + " for the error(s) printed above!");
-                    getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
-                } else {
-                    long end = System.currentTimeMillis();
-                    getLogger().info("Connected to " + aiProvider + "!" + " (" +  ((end-start) / 1000f) + "s)");
-                    apiConnected = true;
                 }
-            }
-        }.runTaskAsynchronously(this);
+            }.runTaskAsynchronously(this);
+            
+        } catch (Exception e) {
+            getLogger().severe("Failed to initialize AI provider: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     public void writeData(CraftGPT craftGPT) {
@@ -503,7 +481,7 @@ public final class CraftGPT extends JavaPlugin {
                 .messages(chatMessages)
                 .temperature((double) temp)
                 .maxTokens(maxTokens)
-                .model(getConfig().getString("model"))
+                .model(aiModel != null && !aiModel.isEmpty() ? aiModel : getConfig().getString("ai.model", "gpt-4o"))
                 .build();
         return openAIService.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
     }

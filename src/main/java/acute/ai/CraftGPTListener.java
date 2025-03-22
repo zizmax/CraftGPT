@@ -827,7 +827,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
             ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                     .messages(chatMessagesToSend)
                     .temperature((double) aiMob.getTemperature())
-                    .model(craftGPT.getConfig().getString("model"))
+                    .model(craftGPT.aiModel != null && !craftGPT.aiModel.isEmpty() ? 
+                           craftGPT.aiModel : 
+                           craftGPT.getConfig().getString("ai.model", "gpt-4o"))
                     .build();
 
             if (!craftGPT.getConfig().getBoolean("stream-responses")) {
