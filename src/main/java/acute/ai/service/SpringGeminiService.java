@@ -9,6 +9,9 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatModel;
 import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatOptions;
 
+import com.google.auth.oauth2.GoogleCredentials;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,15 +25,69 @@ public class SpringGeminiService implements AIService {
     public SpringGeminiService(String apiKey, String projectId, String location) {
         // For Spring AI 1.0.0-M6 Gemini, we need to use Google Cloud authentication
         // The apiKey parameter is actually the path to the Google Cloud credentials JSON file
+        
+        // Set both system property and environment variable for better compatibility
         System.setProperty("GOOGLE_APPLICATION_CREDENTIALS", apiKey);
         
-        // Create VertexAI instance first
-        VertexAI vertexAI = new VertexAI(projectId, location);
+        try {
+            // Set the environment variable directly in the Java process environment
+            java.util.Map<String, String> env = System.getenv();
+            java.lang.reflect.Field field = env.getClass().getDeclaredField("m");
+            field.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, String> envMap = (java.util.Map<String, String>) field.get(env);
+            envMap.put("GOOGLE_APPLICATION_CREDENTIALS", apiKey);
+        } catch (Exception e) {
+            // If modifying the environment fails, we'll continue using the system property
+            System.err.println("Warning: Failed to set environment variable for Google credentials: " + e.getMessage());
+        }
         
-        // Create the chat model with Google Cloud project settings
-        this.chatModel = VertexAiGeminiChatModel.builder()
-                .vertexAI(vertexAI)
-                .build();
+        // Log information for debugging
+        System.out.println("Gemini credentials path: " + apiKey);
+        System.out.println("Project ID: " + projectId);
+        System.out.println("Location: " + location);
+        System.out.println("Path exists: " + new java.io.File(apiKey).exists());
+        System.out.println("Path is readable: " + new java.io.File(apiKey).canRead());
+        
+        VertexAI vertexAI = null;
+        
+        try {
+            // First try: Use system properties (already set above)
+            try {
+                vertexAI = new VertexAI(projectId, location);
+                System.out.println("Successfully created VertexAI using system properties");
+            } catch (Exception e1) {
+                System.err.println("Failed to create VertexAI using system properties: " + e1.getMessage());
+                
+                // Second try: Load credentials directly from file
+                try {
+                    System.out.println("Trying to load credentials directly from file...");
+                    GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(apiKey));
+                    System.out.println("Successfully loaded credentials from file");
+                    
+                    // Create with explicit credentials
+                    com.google.cloud.vertexai.VertexAIOptions options = com.google.cloud.vertexai.VertexAIOptions.builder()
+                            .setCredentials(credentials)
+                            .build();
+                    vertexAI = new VertexAI(projectId, location, options);
+                    System.out.println("Successfully created VertexAI with explicit credentials");
+                } catch (IOException e2) {
+                    System.err.println("Failed to load credentials from file: " + e2.getMessage());
+                    e2.printStackTrace();
+                    throw new RuntimeException("All authentication methods failed", e2);
+                }
+            }
+            
+            // Create the chat model with Google Cloud project settings
+            this.chatModel = VertexAiGeminiChatModel.builder()
+                    .vertexAI(vertexAI)
+                    .build();
+            System.out.println("Successfully created Gemini chat model");
+        } catch (Exception e) {
+            System.err.println("Error creating Gemini service: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to initialize Gemini service", e);
+        }
     }
     
     @Override

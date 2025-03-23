@@ -2,6 +2,22 @@
 
 This document explains how to set up the Google Gemini integration for CraftGPT.
 
+## Important Note for Windows Users
+
+When setting up on Windows, pay special attention to file paths:
+
+1. Use forward slashes in the configuration file:
+   ```yaml
+   gemini-credentials-path: "C:/path/to/your/credentials.json"
+   ```
+
+2. Or use double backslashes (escaping the backslash):
+   ```yaml
+   gemini-credentials-path: "C:\\path\\to\\your\\credentials.json"
+   ```
+
+3. Ensure the credentials file has proper read permissions for the user running the Minecraft server
+
 ## Prerequisites
 
 1. A Google Cloud Platform account
@@ -72,12 +88,34 @@ The following Gemini models are available:
 
 ## Troubleshooting
 
-If you encounter issues:
+### Common Issues
 
-1. Check the server logs for detailed error messages
-2. Verify that your service account has the correct permissions
-3. Make sure the path to the credentials file is correct
-4. Confirm that your project has the Vertex AI API enabled
-5. Ensure your Google Cloud account has billing enabled
+#### 1. Credentials Not Found Error
+If you see an error like:
+```
+Your default credentials were not found. To set up Application Default Credentials...
+```
+
+Try these solutions:
+- Check that the path to your credentials file is correctly formatted (see Windows path notes above)
+- Make sure the credentials file exists and has read permissions
+- The service account needs "Vertex AI User" permissions
+- The user running the Minecraft server must have access to the credentials file
+- Try using absolute paths rather than relative paths
+
+#### 2. API Not Enabled
+If you see errors about the API not being enabled or not having permission:
+- Make sure you've enabled the Vertex AI API in your Google Cloud project
+- Ensure the project has billing enabled
+- Check that the project ID in config.yml matches the project ID in your Google Cloud credentials
+
+#### 3. File Path Issues
+- Windows users may need to use `/` or `\\` in paths
+- Make sure to enclose the path in quotes if it contains spaces
+- The path must be an absolute path, not relative
+
+#### 4. Server File Permissions
+- The file might be readable in your user account but not by the server user
+- Try granting read permissions to everyone for testing: `chmod 644 credentials.json`
 
 For more help, visit the CraftGPT Discord server or submit an issue on GitHub.

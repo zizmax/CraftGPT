@@ -266,11 +266,31 @@ public final class CraftGPT extends JavaPlugin {
             String projectId = getConfig().getString("gemini-project-id");
             String location = getConfig().getString("gemini-location");
             
+            getLogger().info("Initializing Gemini provider with:");
+            getLogger().info("- Credentials path: " + credentialsPath);
+            getLogger().info("- Project ID: " + projectId);
+            getLogger().info("- Location: " + location);
+            
             if (credentialsPath == null || credentialsPath.equals("PATH TO GOOGLE CLOUD CREDENTIALS JSON") || 
                 projectId == null || projectId.equals("your-google-cloud-project-id")) {
                 getLogger().severe("Gemini configuration is incomplete! Check gemini-credentials-path and gemini-project-id in config.yml");
                 return;
             } else {
+                // Check if credentials file exists
+                java.io.File credentialsFile = new java.io.File(credentialsPath);
+                if (!credentialsFile.exists()) {
+                    getLogger().severe("Gemini credentials file not found at: " + credentialsPath);
+                    getLogger().severe("Please check that the path is correct and the file exists.");
+                    return;
+                }
+                
+                if (!credentialsFile.canRead()) {
+                    getLogger().severe("Gemini credentials file is not readable at: " + credentialsPath);
+                    getLogger().severe("Please check file permissions.");
+                    return;
+                }
+                
+                getLogger().info("Gemini credentials file found and is readable");
                 credentialsValid = true;
             }
         } else {
