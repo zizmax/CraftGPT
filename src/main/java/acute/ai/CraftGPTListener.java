@@ -830,181 +830,95 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                            craftGPT.getConfig().getString("ai.model", "gpt-4o"))
                     .build();
 
-            if (!craftGPT.getConfig().getBoolean("stream-responses")) {
-
-                Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
-                    @Override
-                    public void run() {
-                        ChatCompletionResult chatCompletions = null;
-                        ChatMessage chatMessageResponse = null;
-                        String errorSignature = null;
-                        for (int i = 0; i < 3; i++) {
-                            try {
-                                chatCompletions = craftGPT.openAIService.createChatCompletion(completionRequest);
-                                chatMessageResponse = chatCompletions.getChoices().get(0).getMessage();
-                                break;
-                            } catch (OpenAiHttpException e) {
-                                if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
-                                    craftGPT.getLogger().warning("Failed again with identical error on try number " + (i + 1) + ".");
-                                } else {
-                                    craftGPT.printAPIErrorConsole(e);
-                                    errorSignature = e.statusCode + e.type;
-                                }
-                            } catch (Exception e) {
-                                craftGPT.getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
-                                if (!e.getMessage().contains("timeout")) {
-                                    e.printStackTrace();
-                                }
-                            }
-                        }
-                        if (aiMob.getPrefix() == null) aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix"))); // Catch mobs that were created before prefix functionality
-
-                        String prefix = aiMob.getPrefix().replace("%NAME%", aiMob.getName()) + " ";
-
-
-                        if (chatCompletions == null || chatMessageResponse == null) {
-                            craftGPT.toggleWaitingOnAPI(entity);
-
-                            for (Player recipient : recipients) {
-                                recipient.sendMessage(prefix + ChatColor.RED + "API error! Try again momentarily.");
-                            }
-
-                        } else {
-
-                            ChatMessage finalChatMessageResponse = chatMessageResponse;
-
-                            for (Player recipient : recipients) {
-                                recipient.sendMessage(prefix + finalChatMessageResponse.getContent());
-                            }
-
-                            chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
-                            if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
-                                craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
-                                craftGPT.toggleWaitingOnAPI(entity);
-                            }
-                            if (craftGPT.debug) {
-                                craftGPT.getLogger().info("=== NOT STREAMED ===");
-                                craftGPT.getLogger().info("= Original prompt: " + chatMessages.get(0).getContent());
-                                craftGPT.getLogger().info("= Sent prompt: " + chatMessagesToSend.get(0).getContent());
-                                craftGPT.getLogger().info("= Response: " + chatMessageResponse.getContent());
-                                craftGPT.getLogger().info("= Total messages: " + chatMessages.size());
-                                craftGPT.getLogger().info("= Sent messages: " + chatMessagesToSend.size());
-
-                            }
-
-
-                            Usage usage = chatCompletions.getUsage();
-
-
-
-                            if (usage != null && associatedPlayers.size() > 0) {
-                                // Allocate per-player usage
-                                long perPlayerUsage = usage.getTotalTokens() / associatedPlayers.size();
-                                if (craftGPT.debug) {
-                                    craftGPT.getLogger().info("= Total tokens from this chat: " + usage.getTotalTokens());
-                                    craftGPT.getLogger().info("= Per player tokens from this chat: " + perPlayerUsage);
-                                }
-                                for (Player player : associatedPlayers) {
-                                    String path = "players." + player.getUniqueId() + ".total-usage";
-                                    craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getLong(path) + perPlayerUsage);
-                                    if (craftGPT.debug) {
-                                        craftGPT.getLogger().info(String.format("= %s current usage: %s", player.getDisplayName(), craftGPT.getUsageFile().getLong(path)));
-                                        craftGPT.getLogger().info(String.format("= %s now: %s", player.getDisplayName(), craftGPT.getUsageFile().getLong(path) + perPlayerUsage));
-                                    }
-                                }
-
-                                // Global usage
-                                craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getLong("global-total-usage") + usage.getTotalTokens());
-
-                                if (craftGPT.debug) {
-                                    craftGPT.getLogger().info("====== END ======");
-                                }
+            Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
+                @Override
+                public void run() {
+                    ChatCompletionResult chatCompletions = null;
+                    ChatMessage chatMessageResponse = null;
+                    String errorSignature = null;
+                    for (int i = 0; i < 3; i++) {
+                        try {
+                            chatCompletions = craftGPT.openAIService.createChatCompletion(completionRequest);
+                            chatMessageResponse = chatCompletions.getChoices().get(0).getMessage();
+                            break;
+                        } catch (OpenAiHttpException e) {
+                            if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
+                                craftGPT.getLogger().warning("Failed again with identical error on try number " + (i + 1) + ".");
                             } else {
-                                if (craftGPT.debug) craftGPT.getLogger().info("NO USAGE, NOT STREAMED");
+                                craftGPT.printAPIErrorConsole(e);
+                                errorSignature = e.statusCode + e.type;
+                            }
+                        } catch (Exception e) {
+                            craftGPT.getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
+                            if (!e.getMessage().contains("timeout")) {
+                                e.printStackTrace();
                             }
                         }
                     }
-                });
-            }
+                    if (aiMob.getPrefix() == null) aiMob.setPrefix(ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("default-prefix"))); // Catch mobs that were created before prefix functionality
 
-            else {
-                // Streaming
-                Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
-                    @Override
-                    public void run() {
-                        line.add(String.format("<%s> ", aiMob.getName()));
-                        AtomicBoolean firstToken = new AtomicBoolean(true);
-
-                        Flowable<ChatCompletionChunk> chatCompletionResultFlowable = craftGPT.openAIService.streamChatCompletion(completionRequest);
+                    String prefix = aiMob.getPrefix().replace("%NAME%", aiMob.getName()) + " ";
 
 
-                        chatCompletionResultFlowable.forEach(chatCompletions -> {
-                            ChatMessage chatMessageStream = chatCompletions.getChoices().get(0).getMessage();
+                    if (chatCompletions == null || chatMessageResponse == null) {
+                        craftGPT.toggleWaitingOnAPI(entity);
 
+                        for (Player recipient : recipients) {
+                            recipient.sendMessage(prefix + ChatColor.RED + "API error! Try again momentarily.");
+                        }
 
-                            String deltaString = chatMessageStream.getContent();
-                            if (deltaString != null) {
-                                // All of this nonsense is to remove occasional surrounding quotes from the response
-                                // Could theoretically be handled with a regex, but there's no easy way of knowing if it's regex-ing the first token or not
-                                if (firstToken.get() && deltaString.length() > 0) {
-                                    if (deltaString.charAt(0) == ('"') || deltaString.charAt(0) == ('\'')) {
-                                        if (craftGPT.debug) craftGPT.getLogger().warning("REMOVED \" or '");
-                                        deltaString = deltaString.substring(1);
-                                    }
-                                    firstToken.set(false);
+                    } else {
+
+                        ChatMessage finalChatMessageResponse = chatMessageResponse;
+
+                        for (Player recipient : recipients) {
+                            recipient.sendMessage(prefix + finalChatMessageResponse.getContent());
+                        }
+
+                        chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
+                        if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
+                            craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
+                            craftGPT.toggleWaitingOnAPI(entity);
+                        }
+                        if (craftGPT.debug) {
+                            craftGPT.getLogger().info("======= CHAT =======");
+                            craftGPT.getLogger().info("= Original prompt: " + chatMessages.get(0).getContent());
+                            craftGPT.getLogger().info("= Sent prompt: " + chatMessagesToSend.get(0).getContent());
+                            craftGPT.getLogger().info("= Response: " + chatMessageResponse.getContent());
+                            craftGPT.getLogger().info("= Total messages: " + chatMessages.size());
+                            craftGPT.getLogger().info("= Sent messages: " + chatMessagesToSend.size());
+                        }
+
+                        Usage usage = chatCompletions.getUsage();
+
+                        if (usage != null && associatedPlayers.size() > 0) {
+                            // Allocate per-player usage
+                            long perPlayerUsage = usage.getTotalTokens() / associatedPlayers.size();
+                            if (craftGPT.debug) {
+                                craftGPT.getLogger().info("= Total tokens from this chat: " + usage.getTotalTokens());
+                                craftGPT.getLogger().info("= Per player tokens from this chat: " + perPlayerUsage);
+                            }
+                            for (Player player : associatedPlayers) {
+                                String path = "players." + player.getUniqueId() + ".total-usage";
+                                craftGPT.getUsageFile().set(path, craftGPT.getUsageFile().getLong(path) + perPlayerUsage);
+                                if (craftGPT.debug) {
+                                    craftGPT.getLogger().info(String.format("= %s current usage: %s", player.getDisplayName(), craftGPT.getUsageFile().getLong(path)));
+                                    craftGPT.getLogger().info(String.format("= %s now: %s", player.getDisplayName(), craftGPT.getUsageFile().getLong(path) + perPlayerUsage));
                                 }
-                                line.add(deltaString);
                             }
 
-                            List<String> wrapped = List.of(WordUtils.wrap(String.join("", line), 60, "\n", true).split("\n"));
+                            // Global usage
+                            craftGPT.getUsageFile().set("global-total-usage", craftGPT.getUsageFile().getLong("global-total-usage") + usage.getTotalTokens());
 
-                            if (wrapped.size() > 1) {
-                                String lineString = String.format("%s", wrapped.get(0).replace("\n", ""));
-                                // Runs on next tick because requires getNearbyEntities which can't be run async
-                                new BukkitRunnable() {
-                                    @Override
-                                    public void run() {
-                                        broadcastToNearbyPlayers(entity, lineString);
-                                        if (craftGPT.debug) craftGPT.getLogger().info("STREAMED: " + lineString);
-
-                                    }
-                                }.runTask(craftGPT);
-                                line.clear();
-                                line.add(String.format("<%s» %s", aiMob.getName(), wrapped.get(1)));
+                            if (craftGPT.debug) {
+                                craftGPT.getLogger().info("====== END ======");
                             }
-
-
-                            if (chatCompletions.getChoices().get(0).getFinishReason() != null) {
-                                if (String.join("", line).length() > 0) {
-                                    String finalLine = String.join("", line);
-                                    if (finalLine.substring(finalLine.length() - 1).equals("\"") || finalLine.substring(finalLine.length() - 1).equals("'")) {
-                                        if (craftGPT.debug) craftGPT.getLogger().warning("REMOVED \" OR '");
-                                        finalLine = finalLine.substring(0, finalLine.length() - 1);
-                                    }
-                                    // Runs on next tick because broadcastToNearbyPlayers can't be run async
-                                    String finalLineTemp = finalLine;
-                                    new BukkitRunnable() {
-                                        @Override
-                                        public void run() {
-                                            broadcastToNearbyPlayers(entity, finalLineTemp);
-                                        }
-                                    }.runTask(craftGPT);
-                                    if (craftGPT.debug) craftGPT.getLogger().info("STREAMED: " + finalLineTemp);
-                                }
-                                if (chatCompletions.getChoices().get(0).getMessage() != null) {
-                                    chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
-                                }
-
-                                if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
-                                    craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
-                                    //acuteAI.acuteData.get(entity.getUniqueId().toString()).setTokens(acuteAI.acuteData.get(entity.getUniqueId().toString()).getTokens() + response.toString());
-                                    craftGPT.toggleWaitingOnAPI(entity);
-                                }
-                            }
-                        });
+                        } else {
+                            if (craftGPT.debug) craftGPT.getLogger().info("NO USAGE DATA");
+                        }
                     }
-                });
-            }
+                }
+            });
             return true;
         }
         else {

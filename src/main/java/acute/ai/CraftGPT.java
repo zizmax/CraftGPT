@@ -51,7 +51,7 @@ public final class CraftGPT extends JavaPlugin {
     public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
-    public acute.ai.service.OpenAIService openAIService;
+    public acute.ai.service.OpenAiService openAIService;
     public acute.ai.service.AIService aiService;
 
     public static final Random random = new Random();
@@ -476,12 +476,19 @@ public final class CraftGPT extends JavaPlugin {
         List<ChatMessage> chatMessages = new ArrayList<>();
         chatMessages.add(new ChatMessage(ChatMessageRole.SYSTEM.value(), systemMessage));
         chatMessages.add(new ChatMessage(ChatMessageRole.USER.value(), userMessage));
+        
+        // Get the configured model from settings, or use a default appropriate for the provider
+        String model = aiModel != null && !aiModel.isEmpty() 
+            ? aiModel 
+            : getConfig().getString("ai.model", "gpt-4o");
+        
         ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                 .messages(chatMessages)
                 .temperature((double) temp)
                 .maxTokens(maxTokens)
-                .model(aiModel != null && !aiModel.isEmpty() ? aiModel : getConfig().getString("ai.model", "gpt-4o"))
+                .model(model)
                 .build();
+                
         return openAIService.createChatCompletion(completionRequest).getChoices().get(0).getMessage().getContent();
     }
 

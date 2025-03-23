@@ -6,7 +6,7 @@
 
     <groupId>acute.ai</groupId>
     <artifactId>CraftGPT</artifactId>
-    <version>0.2.14</version>
+    <version>0.2.14-FRANKEN</version>
     <packaging>jar</packaging>
 
     <name>CraftGPT</name>
@@ -124,7 +124,7 @@
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
-                <version>1.0.0-SNAPSHOT</version>
+                <version>1.0.0-M6</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

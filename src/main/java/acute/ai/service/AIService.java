@@ -31,16 +31,6 @@ public interface AIService {
     ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model);
     
     /**
-     * Stream a chat completion response with multiple messages
-     * 
-     * @param messages List of messages with roles and content
-     * @param temperature The temperature (randomness) setting
-     * @param model The model to use
-     * @return A stream of chat completion chunks
-     */
-    StreamingChatCompletionResponse streamChatCompletion(List<Message> messages, double temperature, String model);
-    
-    /**
      * Get the provider type
      * 
      * @return The provider type (OpenAI, Claude, etc.)

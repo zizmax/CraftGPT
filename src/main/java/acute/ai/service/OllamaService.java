@@ -1,31 +1,50 @@
 package acute.ai.service;
 
-import io.reactivex.BackpressureStrategy;
-import io.reactivex.Flowable;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.ollama.api.OllamaApi;
+import org.springframework.ai.ollama.api.OllamaOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 /**
- * Ollama implementation of AIService
- * 
- * This is a placeholder implementation until Spring AI is properly integrated.
- * When Spring AI is fully available, this should be replaced with proper implementation
- * using the Spring AI Ollama module.
+ * Ollama implementation of AIService using Spring AI
  */
 public class OllamaService implements AIService, OpenAiService {
 
     private final Map<String, String> availableModels;
     private final String host;
+    private final ChatClient chatClient;
     
     public OllamaService(String host) {
         this.host = host != null && !host.trim().isEmpty() ? host : "http://localhost:11434";
+        
+        // Create Ollama API instance
+        OllamaApi ollamaApi = new OllamaApi(this.host);
+        
+        // Create the Ollama chat model with the API
+        OllamaChatModel ollamaChatModel = OllamaChatModel.builder()
+                .ollamaApi(ollamaApi)
+                .defaultOptions(OllamaOptions.builder()
+                    .model("llama3")
+                    .temperature(0.7)
+                    .numPredict(1024)
+                    .build())
+                .build();
+                
+        // Create the chat client
+        this.chatClient = ChatClient.builder(ollamaChatModel).build();
         
         // Setup available models - these could be dynamic based on what's available on the server
         this.availableModels = new HashMap<>();
@@ -40,34 +59,124 @@ public class OllamaService implements AIService, OpenAiService {
 
     @Override
     public String simpleChatCompletion(String systemMessage, String userMessage, float temperature, int maxTokens) {
-        // TODO: Implement with Spring AI
-        // This is a placeholder implementation that returns a default response
-        return "This is a placeholder response from Ollama. Spring AI implementation is missing.";
-    }
-
-    @Override
-    public ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model) {
-        // TODO: Implement with Spring AI
-        // This is a placeholder implementation that returns a default response
-        Message responseMessage = new Message("assistant", "This is a placeholder response from Ollama. Spring AI implementation is missing.");
-        TokenUsage tokenUsage = new TokenUsage(10, 10);
+        // Create a prompt with system and user messages
+        List<Message> messages = new ArrayList<>();
+        messages.add(new SystemMessage(systemMessage));
+        messages.add(new UserMessage(userMessage));
         
-        return new ChatCompletionResponse(responseMessage, tokenUsage);
+        Prompt prompt = new Prompt(messages);
+        
+        // Generate response
+        try {
+            // Build options with temperature and max tokens
+            OllamaOptions options = OllamaOptions.builder()
+                    .model("llama3")
+                    .temperature((double)temperature)
+                    .numPredict(maxTokens)
+                    .build();
+            
+            // Call the model with the prompt and options
+            ChatResponse response = chatClient.prompt(prompt)
+                    .options(options)
+                    .call()
+                    .chatResponse();
+            
+            // Extract content from the response
+            return response.getResult().getOutput().getText();
+        } catch (Exception e) {
+            return "Error: " + e.getMessage();
+        }
     }
 
     @Override
-    public StreamingChatCompletionResponse streamChatCompletion(List<Message> messages, double temperature, String model) {
-        // TODO: Implement with Spring AI
-        // This is a placeholder implementation that returns a default streaming response
-        return new SimpleStreamingChatCompletionResponse("This is a placeholder response from Ollama. Spring AI implementation is missing.");
+    public ChatCompletionResponse chatCompletion(List<acute.ai.service.Message> messages, double temperature, String model) {
+        // Convert the messages to Spring AI format
+        List<Message> springMessages = new ArrayList<>();
+        
+        for (acute.ai.service.Message message : messages) {
+            switch (message.getRole()) {
+                case "system":
+                    springMessages.add(new SystemMessage(message.getContent()));
+                    break;
+                case "user":
+                    springMessages.add(new UserMessage(message.getContent()));
+                    break;
+                case "assistant":
+                    springMessages.add(new AssistantMessage(message.getContent()));
+                    break;
+                default:
+                    // Skip unknown roles
+                    break;
+            }
+        }
+        
+        // Create the prompt
+        Prompt prompt = new Prompt(springMessages);
+        
+        // Generate response with options
+        try {
+            // Build options with model and temperature
+            OllamaOptions options = OllamaOptions.builder()
+                    .model(model != null && !model.isEmpty() ? model : "llama3")
+                    .temperature((double)temperature)
+                    .numPredict(1024)
+                    .build();
+            
+            // Call with prompt and options
+            ChatResponse response = chatClient.prompt(prompt)
+                    .options(options)
+                    .call()
+                    .chatResponse();
+            
+            // Extract response content
+            String content = response.getResult().getOutput().getText();
+            
+            // Extract token usage from metadata
+            int promptTokens = 0;
+            int completionTokens = 0;
+            
+            // Try to extract token usage from metadata first
+            try {
+                Object tokenUsage = response.getMetadata().get("tokenUsage");
+                if (tokenUsage instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> usage = (Map<String, Object>) tokenUsage;
+                    promptTokens = usage.containsKey("inputTokens") ? 
+                        ((Number) usage.get("inputTokens")).intValue() : 0;
+                    completionTokens = usage.containsKey("outputTokens") ? 
+                        ((Number) usage.get("outputTokens")).intValue() : 0;
+                }
+            } catch (Exception e) {
+                // Ignore any errors with token usage extraction
+            }
+            
+            // Ollama typically doesn't provide token usage directly, so use approximation if needed
+            if (promptTokens == 0) {
+                promptTokens = calculateInputTokens(messages);
+            }
+            if (completionTokens == 0) {
+                completionTokens = content.length() / 4; // Rough approximation
+            }
+            
+            // Create response objects
+            acute.ai.service.Message responseMessage = new acute.ai.service.Message("assistant", content);
+            TokenUsage tokenUsage = new TokenUsage(promptTokens, completionTokens);
+            
+            return new ChatCompletionResponse(responseMessage, tokenUsage);
+        } catch (Exception e) {
+            // In case of error, return basic error message
+            acute.ai.service.Message responseMessage = new acute.ai.service.Message("assistant", "Error: " + e.getMessage());
+            TokenUsage tokenUsage = new TokenUsage(0, 0);
+            return new ChatCompletionResponse(responseMessage, tokenUsage);
+        }
     }
     
     @Override
     public ChatCompletionResult createChatCompletion(ChatCompletionRequest request) {
         // Convert messages to our format
-        List<Message> messages = new ArrayList<>();
+        List<acute.ai.service.Message> messages = new ArrayList<>();
         for (ChatMessage chatMessage : request.getMessages()) {
-            messages.add(new Message(chatMessage.getRole(), chatMessage.getContent()));
+            messages.add(new acute.ai.service.Message(chatMessage.getRole(), chatMessage.getContent()));
         }
         
         // Call our service
@@ -109,106 +218,6 @@ public class OllamaService implements AIService, OpenAiService {
     }
 
     @Override
-    public Flowable<ChatCompletionChunk> streamChatCompletion(ChatCompletionRequest request) {
-        // Convert messages to our format
-        List<Message> messages = new ArrayList<>();
-        for (ChatMessage chatMessage : request.getMessages()) {
-            messages.add(new Message(chatMessage.getRole(), chatMessage.getContent()));
-        }
-        
-        // Call our streaming service
-        StreamingChatCompletionResponse streamingResponse = streamChatCompletion(
-                messages, 
-                request.getTemperature() != null ? request.getTemperature() : 1.0, 
-                request.getModel());
-        
-        // Create a flowable that will emit chat completion chunks
-        return Flowable.create(emitter -> {
-            final StringBuilder contentBuilder = new StringBuilder();
-            final AtomicReference<Throwable> errorRef = new AtomicReference<>();
-            
-            // Handle content chunks
-            streamingResponse.onContent(content -> {
-                contentBuilder.append(content);
-                
-                ChatCompletionChunk chunk = new ChatCompletionChunk();
-                chunk.setId("stream");
-                chunk.setObject("chat.completion.chunk");
-                chunk.setCreated(System.currentTimeMillis() / 1000L);
-                chunk.setModel(request.getModel());
-                
-                ChatMessage message = new ChatMessage();
-                message.setContent(content);
-                message.setRole("assistant");
-                
-                Choice choice = new Choice();
-                choice.setIndex(0);
-                choice.setMessage(message);
-                
-                List<Choice> choices = new ArrayList<>();
-                choices.add(choice);
-                chunk.setChoices(choices);
-                
-                emitter.onNext(chunk);
-            });
-            
-            // Handle completion
-            streamingResponse.onComplete(() -> {
-                if (!emitter.isCancelled()) {
-                    // Send final chunk with finish reason
-                    ChatCompletionChunk chunk = new ChatCompletionChunk();
-                    chunk.setId("stream-end");
-                    chunk.setObject("chat.completion.chunk");
-                    chunk.setCreated(System.currentTimeMillis() / 1000L);
-                    chunk.setModel(request.getModel());
-                    
-                    Choice choice = new Choice();
-                    choice.setIndex(0);
-                    choice.setFinishReason("stop");
-                    
-                    ChatMessage message = new ChatMessage();
-                    message.setContent("");
-                    message.setRole("assistant");
-                    choice.setMessage(message);
-                    
-                    List<Choice> choices = new ArrayList<>();
-                    choices.add(choice);
-                    chunk.setChoices(choices);
-                    
-                    emitter.onNext(chunk);
-                    emitter.onComplete();
-                }
-            });
-            
-            // Handle errors
-            streamingResponse.onError(throwable -> {
-                errorRef.set(throwable);
-                if (!emitter.isCancelled()) {
-                    emitter.onError(throwable);
-                }
-            });
-            
-            // Setup cancellation
-            emitter.setCancellable(() -> {
-                try {
-                    streamingResponse.close();
-                } catch (Exception e) {
-                    // Ignore
-                }
-            });
-            
-            // Wait for completion or error
-            try {
-                streamingResponse.await();
-            } catch (Exception e) {
-                if (errorRef.get() == null && !emitter.isCancelled()) {
-                    emitter.onError(e);
-                }
-            }
-        }, BackpressureStrategy.BUFFER);
-    }
-
-    @Override
     public ProviderType getProviderType() {
         return ProviderType.OLLAMA;
     }
@@ -216,6 +225,7 @@ public class OllamaService implements AIService, OpenAiService {
     @Override
     public Map<String, String> getAvailableModels() {
         // Ideally, this would query the Ollama server for available models
+        // Spring AI doesn't provide a direct way to list models from the server
         return availableModels;
     }
 
@@ -239,52 +249,22 @@ public class OllamaService implements AIService, OpenAiService {
     }
     
     /**
-     * A simple implementation of StreamingChatCompletionResponse for fallback
+     * Calculate an approximate token count for input messages
+     * 
+     * @param messages The list of messages to analyze
+     * @return Approximate token count
      */
-    private static class SimpleStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
-        private final String content;
-        private final List<Consumer<String>> contentHandlers = new ArrayList<>();
-        private final List<Runnable> completionHandlers = new ArrayList<>();
-        private final List<Consumer<Throwable>> errorHandlers = new ArrayList<>();
-        private final CountDownLatch completionLatch = new CountDownLatch(1);
+    private int calculateInputTokens(List<acute.ai.service.Message> messages) {
+        int totalChars = 0;
         
-        public SimpleStreamingChatCompletionResponse(String content) {
-            this.content = content;
+        // Sum up characters in all messages
+        for (acute.ai.service.Message message : messages) {
+            totalChars += message.getContent().length();
+            totalChars += message.getRole().length();
+            totalChars += 4; // Add a small overhead for message formatting
         }
         
-        @Override
-        public void onContent(Consumer<String> contentHandler) {
-            contentHandlers.add(contentHandler);
-            // Send content immediately
-            contentHandler.accept(content);
-        }
-
-        @Override
-        public void onComplete(Runnable completionHandler) {
-            completionHandlers.add(completionHandler);
-            // Mark as complete immediately
-            completionHandler.run();
-            completionLatch.countDown();
-        }
-
-        @Override
-        public void onError(Consumer<Throwable> errorHandler) {
-            errorHandlers.add(errorHandler);
-        }
-
-        @Override
-        public void await() {
-            try {
-                completionLatch.await();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException("Interrupted while waiting for streaming completion", e);
-            }
-        }
-
-        @Override
-        public void close() {
-            // Nothing to close
-        }
+        // Most LLMs use approximately ~4 chars per token on average
+        return totalChars / 4;
     }
 }
