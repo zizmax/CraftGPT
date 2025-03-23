@@ -254,13 +254,18 @@ public final class CraftGPT extends JavaPlugin {
         }
         
         try {
-            // Create our AIService implementation
-            ProviderType providerType = AIServiceFactory.getProviderTypeFromString(aiProvider);
-            aiService = AIServiceFactory.createService(providerType, getConfig(), this);
+            // Create our unified AIService implementation
+            aiService = AIServiceFactory.createService(getConfig(), this);
             
-            String baseUrl = getConfig().getString("base-url");
-            if (!baseUrl.equals("https://api.openai.com/")) {
-                aiProvider = baseUrl;
+            // If we're using the UnifiedAIService, get the detected provider name
+            if (aiService instanceof UnifiedAIService) {
+                aiProvider = ((UnifiedAIService) aiService).getProviderName();
+            } else {
+                // Fallback for compatibility with any other AIService implementations
+                String baseUrl = getConfig().getString("base-url");
+                if (!baseUrl.equals("https://api.openai.com/")) {
+                    aiProvider = baseUrl;
+                }
             }
             
             new BukkitRunnable() {

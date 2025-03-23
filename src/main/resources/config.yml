@@ -29,46 +29,32 @@ api_key: "API KEY HERE"
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
-# AI Provider settings:
-provider: "openai"  # Available options: openai, anthropic, gemini, ollama, or any OpenAI-compatible API
-
 # API configuration:
 default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
 timeout: 10 # Seconds before the HTTP connection times out and the request is retried
-base-url: "https://api.openai.com/"  # Base URL for your chosen provider's API
-model: "gpt-4o"  # Default model to use (model names vary by provider)
+base-url: "https://api.openai.com/"  # Base URL for your AI provider
+model: "gpt-4o"  # Default model to use (varies by provider)
 
-# Provider-specific settings:
-provider-settings:
-  # Provider-specific base URLs (if blank, uses the default base-url above)
-  base-urls:
-    openai: ""  # default is already https://api.openai.com/
-    anthropic: "https://api.anthropic.com/v1/messages"  # Anthropic endpoint for Messages API
-    gemini: ""  # default varies by deployment
-    ollama: "http://localhost:11434/api/chat"  # Default local Ollama endpoint
-  
-  # Provider-specific models
-  openai:
-    models:
-      - "gpt-4o"
-      - "gpt-4-turbo"
-      - "gpt-4"
-      - "gpt-3.5-turbo"
-  anthropic:
-    models:
-      - "claude-3-opus-20240229"
-      - "claude-3-sonnet-20240229"
-      - "claude-3-haiku-20240307"
-  gemini:
-    models:
-      - "gemini-1.5-pro"
-      - "gemini-1.5-flash"
-  ollama:
-    models:
-      - "llama3"
-      - "mistral"
-      - "mixtral"
+# Common Provider Examples:
+# You can use ANY OpenAI-compatible API by setting the appropriate base-url and model:
+#
+# Examples:
+# OpenAI:
+#   base-url: "https://api.openai.com/"
+#   model: "gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"
+#
+# Anthropic:
+#   base-url: "https://api.anthropic.com/v1/messages"
+#   model: "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"
+#
+# Google Gemini:
+#   base-url: "https://generativelanguage.googleapis.com/"
+#   model: "gemini-1.5-pro", "gemini-1.5-flash"
+#
+# Ollama (local):
+#   base-url: "http://localhost:11434/api/chat"
+#   model: "llama3", "mistral", "mixtral"
   
 proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks API access.
   enabled: false
@@ -337,10 +323,10 @@ messages:
     updates: "Checking for updates..."
   no-permission: "You do not have permission to do that!"
   commands:
-    no-api: "WARNING: CraftGPT is not connected to OpenAI! Most features of the plugin will not work! See console logs for error details."
+    no-api: "WARNING: CraftGPT is not connected to the AI provider! Most features of the plugin will not work! See console logs for error details."
     malformed-command-1: "Malformed command or must run command as player!"
     malformed-command-2: "Malformed command! Try &c/cg help"
-    key-required: "CraftGPT requires an OpenAI API key set in the config!"
+    key-required: "CraftGPT requires an API key set in the config!"
     craftgpt-no-console: "Cannot use /craftgpt as console!"
     api-connected:
       no-aimob-selected: "No AI mob selected!"
