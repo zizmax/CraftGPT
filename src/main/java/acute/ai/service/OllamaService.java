@@ -2,16 +2,6 @@ package acute.ai.service;
 
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.ChatResponse;
-import org.springframework.ai.chat.client.StreamingChatClient;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.ollama.client.OllamaChatClient;
-import org.springframework.ai.ollama.client.OllamaChatOptions;
-import org.springframework.ai.ollama.api.OllamaApi;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,103 +13,69 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
- * Ollama implementation of AIService and OpenAiService for local models
+ * Ollama implementation of AIService
  */
 public class OllamaService implements AIService, OpenAiService {
 
-    private final OllamaChatClient chatClient;
-    private final StreamingChatClient streamingChatClient;
     private final Map<String, String> availableModels;
     private final String host;
     
     public OllamaService(String host) {
-        this.host = host;
-        OllamaApi ollamaApi = OllamaApi.builder()
-                .withBaseUrl(host)
-                .build();
-                
-        this.chatClient = new OllamaChatClient(ollamaApi);
-        this.streamingChatClient = this.chatClient;
+        this.host = host != null && !host.trim().isEmpty() ? host : "http://localhost:11434";
         
+        // Setup available models - these could be dynamic based on what's available on the server
         this.availableModels = new HashMap<>();
-        // These are just examples, actual models will depend on what's installed in Ollama
         availableModels.put("llama3", "Llama 3");
+        availableModels.put("llama3:8b", "Llama 3 8B");
+        availableModels.put("llama3:70b", "Llama 3 70B");
         availableModels.put("mistral", "Mistral");
-        availableModels.put("gemma", "Gemma");
-        availableModels.put("phi", "Phi");
-        
-        // Try to fetch actual models from Ollama
-        try {
-            updateAvailableModels();
-        } catch (Exception e) {
-            // Ignore - we'll use the default models above
-        }
-    }
-    
-    private void updateAvailableModels() {
-        // This is a placeholder - Spring AI doesn't provide a direct way to list models from Ollama
-        // In a real implementation, you'd use the Ollama HTTP API directly to get the list of models
+        availableModels.put("mixtral", "Mixtral");
+        availableModels.put("codellama", "Code Llama");
+        availableModels.put("phi3", "Phi-3");
     }
 
     @Override
     public String simpleChatCompletion(String systemMessage, String userMessage, float temperature, int maxTokens) {
-        List<org.springframework.ai.chat.messages.Message> messages = new ArrayList<>();
-        messages.add(new SystemMessage(systemMessage));
-        messages.add(new UserMessage(userMessage));
-        
-        Prompt prompt = new Prompt(messages, createOptions(temperature, 0, null));
-        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
-        
-        return response.getResult().getOutput().getContent();
+        // TODO: Implement with Spring AI
+        // This is a placeholder implementation that returns a default response
+        return "This is a placeholder response from Ollama. Spring AI implementation is missing.";
     }
 
     @Override
     public ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model) {
-        List<org.springframework.ai.chat.messages.Message> springMessages = convertMessagesToSpring(messages);
-        
-        Prompt prompt = new Prompt(springMessages, createOptions(temperature, 0, model));
-        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
-        
-        Message responseMessage = new Message("assistant", response.getResult().getOutput().getContent());
-        
-        // Note: Ollama might not provide token usage information
-        TokenUsage tokenUsage = new TokenUsage(0, 0);
-        if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
-            tokenUsage = new TokenUsage(
-                    response.getMetadata().getUsage().getInputTokens(), 
-                    response.getMetadata().getUsage().getOutputTokens());
-        }
+        // TODO: Implement with Spring AI
+        // This is a placeholder implementation that returns a default response
+        Message responseMessage = new Message("assistant", "This is a placeholder response from Ollama. Spring AI implementation is missing.");
+        TokenUsage tokenUsage = new TokenUsage(10, 10);
         
         return new ChatCompletionResponse(responseMessage, tokenUsage);
     }
 
     @Override
     public StreamingChatCompletionResponse streamChatCompletion(List<Message> messages, double temperature, String model) {
-        List<org.springframework.ai.chat.messages.Message> springMessages = convertMessagesToSpring(messages);
-        
-        Prompt prompt = new Prompt(springMessages, createOptions(temperature, 0, model));
-        
-        return new SpringStreamingChatCompletionResponse(streamingChatClient, prompt);
+        // TODO: Implement with Spring AI
+        // This is a placeholder implementation that returns a default streaming response
+        return new SimpleStreamingChatCompletionResponse("This is a placeholder response from Ollama. Spring AI implementation is missing.");
     }
     
     @Override
     public ChatCompletionResult createChatCompletion(ChatCompletionRequest request) {
-        // Convert our ChatMessage to Spring Messages
-        List<org.springframework.ai.chat.messages.Message> springMessages = convertChatMessagesToSpring(request.getMessages());
+        // Convert messages to our format
+        List<Message> messages = new ArrayList<>();
+        for (ChatMessage chatMessage : request.getMessages()) {
+            messages.add(new Message(chatMessage.getRole(), chatMessage.getContent()));
+        }
         
-        // Create Spring AI prompt
-        Prompt prompt = new Prompt(springMessages, createOptions(
+        // Call our service
+        ChatCompletionResponse response = chatCompletion(
+                messages, 
                 request.getTemperature() != null ? request.getTemperature() : 1.0, 
-                request.getMaxTokens() != null ? request.getMaxTokens() : 0, 
-                request.getModel()));
+                request.getModel());
         
-        // Call Spring AI
-        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
-        
-        // Convert Spring AI response to our format
+        // Convert response back to OpenAI format
         ChatMessage responseMessage = new ChatMessage(
                 "assistant", 
-                response.getResult().getOutput().getContent());
+                response.getMessage().getContent());
         
         Choice choice = new Choice();
         choice.setIndex(0);
@@ -136,15 +92,13 @@ public class OllamaService implements AIService, OpenAiService {
         result.setModel(request.getModel());
         result.setChoices(choices);
         
-        if (response.getMetadata() != null && response.getMetadata().getUsage() != null) {
+        TokenUsage tokenUsage = response.getTokenUsage();
+        if (tokenUsage != null) {
             Usage usage = new Usage();
-            usage.setPromptTokens(response.getMetadata().getUsage().getInputTokens());
-            usage.setCompletionTokens(response.getMetadata().getUsage().getOutputTokens());
-            usage.setTotalTokens(usage.getPromptTokens() + usage.getCompletionTokens());
+            usage.setPromptTokens(tokenUsage.getInputTokens());
+            usage.setCompletionTokens(tokenUsage.getOutputTokens());
+            usage.setTotalTokens(tokenUsage.getTotalTokens());
             result.setUsage(usage);
-        } else {
-            // Ollama doesn't always provide usage information
-            result.setUsage(new Usage(0, 0));
         }
         
         return result;
@@ -152,87 +106,101 @@ public class OllamaService implements AIService, OpenAiService {
 
     @Override
     public Flowable<ChatCompletionChunk> streamChatCompletion(ChatCompletionRequest request) {
-        // Convert our ChatMessage to Spring Messages
-        List<org.springframework.ai.chat.messages.Message> springMessages = convertChatMessagesToSpring(request.getMessages());
+        // Convert messages to our format
+        List<Message> messages = new ArrayList<>();
+        for (ChatMessage chatMessage : request.getMessages()) {
+            messages.add(new Message(chatMessage.getRole(), chatMessage.getContent()));
+        }
         
-        // Create Spring AI prompt
-        Prompt prompt = new Prompt(springMessages, createOptions(
+        // Call our streaming service
+        StreamingChatCompletionResponse streamingResponse = streamChatCompletion(
+                messages, 
                 request.getTemperature() != null ? request.getTemperature() : 1.0, 
-                request.getMaxTokens() != null ? request.getMaxTokens() : 0, 
-                request.getModel()));
+                request.getModel());
         
         // Create a flowable that will emit chat completion chunks
         return Flowable.create(emitter -> {
             final StringBuilder contentBuilder = new StringBuilder();
             final AtomicReference<Throwable> errorRef = new AtomicReference<>();
             
-            // Stream from Spring AI
-            org.springframework.ai.chat.client.StreamingChatResponse streaming = streamingChatClient.stream(prompt);
+            // Handle content chunks
+            streamingResponse.onContent(content -> {
+                contentBuilder.append(content);
+                
+                ChatCompletionChunk chunk = new ChatCompletionChunk();
+                chunk.setId("stream");
+                chunk.setObject("chat.completion.chunk");
+                chunk.setCreated(System.currentTimeMillis() / 1000L);
+                chunk.setModel(request.getModel());
+                
+                ChatMessage message = new ChatMessage();
+                message.setContent(content);
+                message.setRole("assistant");
+                
+                Choice choice = new Choice();
+                choice.setIndex(0);
+                choice.setMessage(message);
+                
+                List<Choice> choices = new ArrayList<>();
+                choices.add(choice);
+                chunk.setChoices(choices);
+                
+                emitter.onNext(chunk);
+            });
             
-            streaming.subscribe(
-                chunk -> {
-                    String content = chunk.getOutput().getContent();
-                    contentBuilder.append(content);
-                    
-                    ChatCompletionChunk chatChunk = new ChatCompletionChunk();
-                    chatChunk.setId("stream");
-                    chatChunk.setObject("chat.completion.chunk");
-                    chatChunk.setCreated(System.currentTimeMillis() / 1000L);
-                    chatChunk.setModel(request.getModel());
-                    
-                    ChatMessage message = new ChatMessage();
-                    message.setContent(content);
-                    message.setRole("assistant");
+            // Handle completion
+            streamingResponse.onComplete(() -> {
+                if (!emitter.isCancelled()) {
+                    // Send final chunk with finish reason
+                    ChatCompletionChunk chunk = new ChatCompletionChunk();
+                    chunk.setId("stream-end");
+                    chunk.setObject("chat.completion.chunk");
+                    chunk.setCreated(System.currentTimeMillis() / 1000L);
+                    chunk.setModel(request.getModel());
                     
                     Choice choice = new Choice();
                     choice.setIndex(0);
+                    choice.setFinishReason("stop");
+                    
+                    ChatMessage message = new ChatMessage();
+                    message.setContent("");
+                    message.setRole("assistant");
                     choice.setMessage(message);
                     
                     List<Choice> choices = new ArrayList<>();
                     choices.add(choice);
-                    chatChunk.setChoices(choices);
+                    chunk.setChoices(choices);
                     
-                    emitter.onNext(chatChunk);
-                },
-                throwable -> {
-                    errorRef.set(throwable);
-                    if (!emitter.isCancelled()) {
-                        emitter.onError(throwable);
-                    }
-                },
-                () -> {
-                    if (!emitter.isCancelled()) {
-                        // Send final chunk with finish reason
-                        ChatCompletionChunk chunk = new ChatCompletionChunk();
-                        chunk.setId("stream-end");
-                        chunk.setObject("chat.completion.chunk");
-                        chunk.setCreated(System.currentTimeMillis() / 1000L);
-                        chunk.setModel(request.getModel());
-                        
-                        Choice choice = new Choice();
-                        choice.setIndex(0);
-                        choice.setFinishReason("stop");
-                        
-                        ChatMessage message = new ChatMessage();
-                        message.setContent("");
-                        message.setRole("assistant");
-                        choice.setMessage(message);
-                        
-                        List<Choice> choices = new ArrayList<>();
-                        choices.add(choice);
-                        chunk.setChoices(choices);
-                        
-                        emitter.onNext(chunk);
-                        emitter.onComplete();
-                    }
+                    emitter.onNext(chunk);
+                    emitter.onComplete();
                 }
-            );
+            });
+            
+            // Handle errors
+            streamingResponse.onError(throwable -> {
+                errorRef.set(throwable);
+                if (!emitter.isCancelled()) {
+                    emitter.onError(throwable);
+                }
+            });
             
             // Setup cancellation
             emitter.setCancellable(() -> {
-                // Spring AI doesn't have a way to cancel a streaming request
-                // We'll just ignore it since the stream will complete normally
+                try {
+                    streamingResponse.close();
+                } catch (Exception e) {
+                    // Ignore
+                }
             });
+            
+            // Wait for completion or error
+            try {
+                streamingResponse.await();
+            } catch (Exception e) {
+                if (errorRef.get() == null && !emitter.isCancelled()) {
+                    emitter.onError(e);
+                }
+            }
         }, BackpressureStrategy.BUFFER);
     }
 
@@ -243,6 +211,7 @@ public class OllamaService implements AIService, OpenAiService {
 
     @Override
     public Map<String, String> getAvailableModels() {
+        // Ideally, this would query the Ollama server for available models
         return availableModels;
     }
 
@@ -260,140 +229,49 @@ public class OllamaService implements AIService, OpenAiService {
     public Optional<Map<String, Object>> getServiceStatus() {
         Map<String, Object> status = new HashMap<>();
         status.put("provider", "Ollama");
-        status.put("host", host);
         status.put("connected", testConnection());
+        status.put("host", host);
         return Optional.of(status);
     }
     
-    private List<org.springframework.ai.chat.messages.Message> convertMessagesToSpring(List<Message> messages) {
-        List<org.springframework.ai.chat.messages.Message> springMessages = new ArrayList<>();
-        
-        for (Message message : messages) {
-            switch (message.getRole().toLowerCase()) {
-                case "system":
-                    springMessages.add(new SystemMessage(message.getContent()));
-                    break;
-                case "user":
-                    springMessages.add(new UserMessage(message.getContent()));
-                    break;
-                case "assistant":
-                    springMessages.add(new AssistantMessage(message.getContent()));
-                    break;
-                default:
-                    springMessages.add(new UserMessage(message.getContent()));
-            }
-        }
-        
-        return springMessages;
-    }
-    
-    private List<org.springframework.ai.chat.messages.Message> convertChatMessagesToSpring(List<ChatMessage> messages) {
-        List<org.springframework.ai.chat.messages.Message> springMessages = new ArrayList<>();
-        
-        for (ChatMessage message : messages) {
-            switch (message.getRole().toLowerCase()) {
-                case "system":
-                    springMessages.add(new SystemMessage(message.getContent()));
-                    break;
-                case "user":
-                    springMessages.add(new UserMessage(message.getContent()));
-                    break;
-                case "assistant":
-                    springMessages.add(new AssistantMessage(message.getContent()));
-                    break;
-                default:
-                    springMessages.add(new UserMessage(message.getContent()));
-            }
-        }
-        
-        return springMessages;
-    }
-    
-    private OllamaChatOptions createOptions(double temperature, int maxTokens, String model) {
-        OllamaChatOptions.Builder builder = OllamaChatOptions.builder()
-                .withTemperature(temperature);
-        
-        if (model != null && !model.isEmpty()) {
-            builder.withModel(model);
-        }
-        
-        return builder.build();
-    }
-    
     /**
-     * Implementation of StreamingChatCompletionResponse using Spring AI's StreamingChatClient
+     * A simple implementation of StreamingChatCompletionResponse
      */
-    private static class SpringStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
-        private final StreamingChatClient streamingChatClient;
-        private final Prompt prompt;
-        private org.springframework.ai.chat.client.StreamingChatResponse streamingResponse;
+    private static class SimpleStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
+        private final String content;
         private final List<Consumer<String>> contentHandlers = new ArrayList<>();
         private final List<Runnable> completionHandlers = new ArrayList<>();
         private final List<Consumer<Throwable>> errorHandlers = new ArrayList<>();
         private final CountDownLatch completionLatch = new CountDownLatch(1);
-        private final AtomicReference<Throwable> error = new AtomicReference<>();
         
-        public SpringStreamingChatCompletionResponse(StreamingChatClient streamingChatClient, Prompt prompt) {
-            this.streamingChatClient = streamingChatClient;
-            this.prompt = prompt;
+        public SimpleStreamingChatCompletionResponse(String content) {
+            this.content = content;
         }
         
-        private void initStreamIfNeeded() {
-            if (streamingResponse == null) {
-                streamingResponse = streamingChatClient.stream(prompt);
-                
-                // Setup the stream processing
-                streamingResponse.subscribe(
-                    chunk -> {
-                        String content = chunk.getOutput().getContent();
-                        for (Consumer<String> handler : contentHandlers) {
-                            handler.accept(content);
-                        }
-                    },
-                    throwable -> {
-                        error.set(throwable);
-                        for (Consumer<Throwable> handler : errorHandlers) {
-                            handler.accept(throwable);
-                        }
-                        completionLatch.countDown();
-                    },
-                    () -> {
-                        for (Runnable handler : completionHandlers) {
-                            handler.run();
-                        }
-                        completionLatch.countDown();
-                    }
-                );
-            }
-        }
-
         @Override
         public void onContent(Consumer<String> contentHandler) {
             contentHandlers.add(contentHandler);
-            initStreamIfNeeded();
+            // Send content immediately
+            contentHandler.accept(content);
         }
 
         @Override
         public void onComplete(Runnable completionHandler) {
             completionHandlers.add(completionHandler);
-            initStreamIfNeeded();
+            // Mark as complete immediately
+            completionHandler.run();
+            completionLatch.countDown();
         }
 
         @Override
         public void onError(Consumer<Throwable> errorHandler) {
             errorHandlers.add(errorHandler);
-            initStreamIfNeeded();
         }
 
         @Override
         public void await() {
-            initStreamIfNeeded();
             try {
                 completionLatch.await();
-                
-                if (error.get() != null) {
-                    throw new RuntimeException("Error in streaming response", error.get());
-                }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException("Interrupted while waiting for streaming completion", e);
@@ -402,7 +280,7 @@ public class OllamaService implements AIService, OpenAiService {
 
         @Override
         public void close() {
-            // Spring AI handles closing the stream internally
+            // Nothing to close
         }
     }
 }

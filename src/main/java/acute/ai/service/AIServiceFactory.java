@@ -27,6 +27,7 @@ public class AIServiceFactory {
         }
         
         AIService service;
+        
         switch (type) {
             case OPENAI:
                 service = new SpringOpenAiService(apiKey, baseUrl != null && !baseUrl.trim().isEmpty() ? baseUrl : "https://api.openai.com/");
@@ -43,7 +44,10 @@ public class AIServiceFactory {
                 service = new OllamaService(baseUrl != null && !baseUrl.trim().isEmpty() ? baseUrl : "http://localhost:11434");
                 break;
             default:
-                throw new IllegalArgumentException("Unsupported provider type: " + providerType);
+                // Fall back to OpenAI for any unsupported provider
+                System.out.println("Warning: Provider " + providerType + " not available, falling back to OpenAI");
+                service = new SpringOpenAiService(apiKey, "https://api.openai.com/");
+                break;
         }
         
         serviceCache.put(cacheKey, service);

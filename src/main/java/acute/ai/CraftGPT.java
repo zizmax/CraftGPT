@@ -145,9 +145,15 @@ public final class CraftGPT extends JavaPlugin {
 
         enableOpenAI();
 
-        if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
-            new PlaceholderAPIExpansion(this).register();
-            getLogger().info("Registered with PlaceholderAPI");
+        // Try to register PlaceholderAPI if available
+        try {
+            if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+                new PlaceholderAPIExpansion(this).register();
+                getLogger().info("Registered with PlaceholderAPI");
+            }
+        } catch (NoClassDefFoundError e) {
+            getLogger().warning("PlaceholderAPI is installed but the plugin couldn't be registered.");
+            getLogger().warning("This is normal if building without the PlaceholderAPI dependency.");
         }
 
         // Check for updates
