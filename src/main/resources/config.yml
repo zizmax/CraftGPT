@@ -20,7 +20,11 @@
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
-api_key: "API KEY HERE"
+# Which AI provider to use: openai, anthropic, google, ollama
+provider: openai
+
+# API key for the selected provider
+api-key: "API KEY HERE"
 
 # +----------------------------------------------------------------------------------------------+ #
 # |                                                                                              | #
@@ -30,11 +34,25 @@ api_key: "API KEY HERE"
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
-# OpenAI API settings:
+# AI API settings:
 default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
 timeout: 10 # Seconds before the HTTP connection times out and the request is retried
-base-url: "https://api.openai.com/"
+
+# Base URL for the selected provider
+# Examples:
+# - OpenAI:    https://api.openai.com/v1/
+# - Anthropic: https://api.anthropic.com/v1/openai/
+# - Google:    https://generativelanguage.googleapis.com/v1/
+# - Ollama:    http://localhost:11434/v1/
+base-url: "https://api.openai.com/v1/"
+
+# Model to use for the selected provider
+# Examples:
+# - OpenAI:    gpt-4o, gpt-3.5-turbo
+# - Anthropic: claude-3-opus-20240229, claude-3-sonnet-20240229
+# - Google:    gemini-1.5-pro, gemini-1.0-pro
+# - Ollama:    llama3, mistral, phi3
 model: "gpt-4o"
 proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks OpenAI.
   enabled: false

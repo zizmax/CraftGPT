@@ -12,36 +12,64 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Implementation of AIService using LangChain4j library for OpenAI
+ * Implementation of AIService using LangChain4j library with OpenAI-compatible APIs
+ * Supports multiple providers through the OpenAI compatibility layer
  */
 public class LangChain4jOpenAiService implements AIService {
     
+    private final OpenAiChatModel chatModel;
     private final String apiKey;
     private final String baseUrl;
     private final Integer timeout;
-    private final String defaultModel = "gpt-4o"; // Default model to use if none specified
+    private final String defaultModel;
+    private final ProviderType providerType;
     
-    public LangChain4jOpenAiService(String apiKey, String baseUrl, Integer timeout) {
+    public LangChain4jOpenAiService(String apiKey, String baseUrl, Integer timeout, String modelName, ProviderType providerType) {
         this.apiKey = apiKey;
+        this.timeout = timeout;
+        this.providerType = providerType;
         
-        // Ensure baseUrl is properly formatted with /v1/ path
-        if (baseUrl != null) {
-            // Remove trailing slash if present
-            if (baseUrl.endsWith("/")) {
-                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
-            }
-            
-            // Add /v1 if not already present
-            if (!baseUrl.endsWith("/v1")) {
-                baseUrl = baseUrl + "/v1";
-            }
-            
-            // Ensure trailing slash
-            baseUrl = baseUrl + "/";
+        // Use provided model name or fall back to a default
+        this.defaultModel = (modelName != null && !modelName.isEmpty()) ? modelName : "gpt-4o";
+        
+        // Format base URL according to provider requirements
+        this.baseUrl = formatBaseUrl(baseUrl, providerType);
+        
+        // Create the chat model
+        this.chatModel = createChatModel(0.7, 0, defaultModel);
+    }
+    
+    /**
+     * Formats the base URL according to provider-specific requirements
+     */
+    private String formatBaseUrl(String baseUrl, ProviderType providerType) {
+        if (baseUrl == null) {
+            return null;
         }
         
-        this.baseUrl = baseUrl;
-        this.timeout = timeout;
+        // Remove trailing slash if present
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        
+        // Add /v1 if not already present and needed for this provider
+        if (!baseUrl.endsWith("/v1") && needsV1Path(providerType)) {
+            baseUrl = baseUrl + "/v1";
+        }
+        
+        // Ensure trailing slash
+        return baseUrl + "/";
+    }
+    
+    /**
+     * Determines if the provider needs /v1 in the path
+     */
+    private boolean needsV1Path(ProviderType providerType) {
+        return switch (providerType) {
+            case OPENAI, OLLAMA -> true;
+            // Other providers might have different requirements
+            default -> false;
+        };
     }
     
     /**
@@ -53,7 +81,7 @@ public class LangChain4jOpenAiService implements AIService {
                 .baseUrl(baseUrl)
                 .modelName(modelName != null ? modelName : defaultModel)
                 .temperature(temperature)
-                .maxTokens(maxTokens)
+                .maxTokens(maxTokens > 0 ? maxTokens : null)
                 .timeout(Duration.ofSeconds(timeout))
                 .build();
     }
@@ -142,8 +170,9 @@ public class LangChain4jOpenAiService implements AIService {
             } else if (message.contains("404") || message.contains("Not Found")) {
                 statusCode = 404;
                 type = "endpoint_not_found";
-                message += "\nPossible cause: LangChain4j may be using the wrong URL format. " +
-                           "Current base URL: " + baseUrl;
+                message += "\nPossible cause: Wrong URL format or provider not configured correctly. " +
+                           "Current base URL: " + baseUrl + 
+                           " for provider: " + providerType.getDisplayName();
             } else if (message.contains("must provide a model parameter")) {
                 type = "model_parameter_required";
                 message += "\nA model parameter is required but was not provided.";
@@ -152,7 +181,7 @@ public class LangChain4jOpenAiService implements AIService {
             return new OpenAiHttpException(message, statusCode, type, e);
         }
         
-        return new RuntimeException("Error calling OpenAI API: " + e.getMessage(), e);
+        return new RuntimeException("Error calling " + providerType.getDisplayName() + " API: " + e.getMessage(), e);
     }
     
     private List<dev.langchain4j.data.message.ChatMessage> convertMessages(List<Message> messages) {
@@ -179,17 +208,44 @@ public class LangChain4jOpenAiService implements AIService {
     
     @Override
     public ProviderType getProviderType() {
-        return ProviderType.OPENAI;
+        return providerType;
     }
     
     @Override
     public Map<String, String> getAvailableModels() {
-        // Hard-coding common models
+        // Return provider-specific models
+        return getModelsForProvider(providerType);
+    }
+    
+    private Map<String, String> getModelsForProvider(ProviderType providerType) {
         Map<String, String> models = new HashMap<>();
-        models.put("gpt-4o", "GPT-4o");
-        models.put("gpt-4-turbo", "GPT-4 Turbo");
-        models.put("gpt-4", "GPT-4");
-        models.put("gpt-3.5-turbo", "GPT-3.5 Turbo");
+        
+        switch (providerType) {
+            case OPENAI:
+                models.put("gpt-4o", "GPT-4o");
+                models.put("gpt-4-turbo", "GPT-4 Turbo");
+                models.put("gpt-4", "GPT-4");
+                models.put("gpt-3.5-turbo", "GPT-3.5 Turbo");
+                break;
+            case ANTHROPIC:
+                models.put("claude-3-opus-20240229", "Claude 3 Opus");
+                models.put("claude-3-sonnet-20240229", "Claude 3 Sonnet");
+                models.put("claude-3-haiku-20240307", "Claude 3 Haiku");
+                break;
+            case GEMINI:
+                models.put("gemini-1.5-pro", "Gemini 1.5 Pro");
+                models.put("gemini-1.0-pro", "Gemini 1.0 Pro");
+                break;
+            case OLLAMA:
+                models.put("llama3", "Llama 3");
+                models.put("mistral", "Mistral");
+                models.put("mixtral", "Mixtral");
+                models.put("gemma", "Gemma");
+                break;
+            default:
+                models.put(defaultModel, "Default Model");
+        }
+        
         return models;
     }
     
@@ -210,7 +266,8 @@ public class LangChain4jOpenAiService implements AIService {
     @Override
     public Optional<Map<String, Object>> getServiceStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("provider", "OpenAI (LangChain4j)");
+        status.put("provider", providerType.getDisplayName() + " (LangChain4j)");
+        status.put("model", defaultModel);
         status.put("available", testConnection());
         return Optional.of(status);
     }

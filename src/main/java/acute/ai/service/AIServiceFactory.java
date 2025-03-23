@@ -19,14 +19,11 @@ public class AIServiceFactory {
             case OPENAI:
                 return createOpenAiService(config);
             case ANTHROPIC:
-                // Placeholder for future implementation
-                throw new UnsupportedOperationException("Anthropic Claude support is not yet implemented");
+                return createAnthropicService(config);
             case GEMINI:
-                // Placeholder for future implementation
-                throw new UnsupportedOperationException("Google Gemini support is not yet implemented");
+                return createGeminiService(config);
             case OLLAMA:
-                // Placeholder for future implementation
-                throw new UnsupportedOperationException("Ollama support is not yet implemented");
+                return createOllamaService(config);
             default:
                 throw new IllegalArgumentException("Unknown provider type: " + providerType);
         }
@@ -39,11 +36,39 @@ public class AIServiceFactory {
      * @return An AIService implementation for OpenAI
      */
     private static AIService createOpenAiService(FileConfiguration config) {
-        String apiKey = config.getString("api_key");
+        String apiKey = config.getString("api-key", config.getString("api_key")); // Support both formats
         String baseUrl = config.getString("base-url");
-        Integer timeout = config.getInt("timeout");
+        String model = config.getString("model");
+        Integer timeout = config.getInt("timeout", 30);
         
-        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout);
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.OPENAI);
+    }
+    
+    private static AIService createAnthropicService(FileConfiguration config) {
+        String apiKey = config.getString("api-key", config.getString("api_key"));
+        String baseUrl = config.getString("base-url");
+        String model = config.getString("model");
+        Integer timeout = config.getInt("timeout", 30);
+        
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.ANTHROPIC);
+    }
+    
+    private static AIService createGeminiService(FileConfiguration config) {
+        String apiKey = config.getString("api-key", config.getString("api_key"));
+        String baseUrl = config.getString("base-url");
+        String model = config.getString("model");
+        Integer timeout = config.getInt("timeout", 30);
+        
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.GEMINI);
+    }
+    
+    private static AIService createOllamaService(FileConfiguration config) {
+        String apiKey = config.getString("api-key", config.getString("api_key"));
+        String baseUrl = config.getString("base-url");
+        String model = config.getString("model");
+        Integer timeout = config.getInt("timeout", 30);
+        
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.OLLAMA);
     }
     
     /**

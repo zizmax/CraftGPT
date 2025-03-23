@@ -198,6 +198,31 @@ public final class CraftGPT extends JavaPlugin {
             return false;
         }
     }
+    
+    /**
+     * Reload AI service with current configuration
+     * Can be used to switch providers at runtime
+     */
+    public void reloadAIService() {
+        // Get provider type from config
+        String providerName = getConfig().getString("provider", "openai");
+        ProviderType providerType = AIServiceFactory.getProviderTypeFromString(providerName);
+        
+        // Create new AI service with updated config
+        aiService = AIServiceFactory.createService(providerType, getConfig());
+        
+        // Set the aiProvider display name
+        aiProvider = providerType.getDisplayName();
+        
+        // Test connection
+        apiConnected = aiService.testConnection();
+        
+        if (apiConnected) {
+            getLogger().info("Successfully connected to " + aiProvider);
+        } else {
+            getLogger().warning("Failed to connect to " + aiProvider + ". Check your configuration.");
+        }
+    }
 
     public FileConfiguration getUsageFile() {
         return this.usageFileConfig;
@@ -243,8 +268,12 @@ public final class CraftGPT extends JavaPlugin {
         this.usageFileConfig = YamlConfiguration.loadConfiguration(usageFile);
     }
 
+    /**
+     * Initialize AI service based on configuration
+     */
     public void enableOpenAI() {
-        String key = getConfig().getString("api_key");
+        // Get API key from config
+        String key = getConfig().getString("api-key", getConfig().getString("api_key"));
         if (key == null || key.length() < 15) {
             getLogger().severe("No API key specified in config! Must set an API key for CraftGPT to work!");
             return;
@@ -254,20 +283,23 @@ public final class CraftGPT extends JavaPlugin {
         }
         
         try {
-            // Create our AIService implementation
-            ProviderType providerType = AIServiceFactory.getProviderTypeFromString(aiProvider);
+            // Get provider type from config
+            String providerName = getConfig().getString("provider", "openai");
+            ProviderType providerType = AIServiceFactory.getProviderTypeFromString(providerName);
+            
+            // Create AIService implementation
             aiService = AIServiceFactory.createService(providerType, getConfig());
             
-            String baseUrl = getConfig().getString("base-url");
-            if (!baseUrl.equals("https://api.openai.com/")) {
-                aiProvider = baseUrl;
-            }
+            // Set the aiProvider display name
+            aiProvider = providerType.getDisplayName();
             
+            // Test connection asynchronously
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     long start = System.currentTimeMillis();
-                    getLogger().info("Connecting to API (" + getConfig().getString("base-url") + ")...");
+                    String baseUrl = getConfig().getString("base-url");
+                    getLogger().info("Connecting to " + aiProvider + " API (" + baseUrl + ")...");
                     String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
                     if (response == null) {
                         getLogger().severe("Tried 3 times and couldn't connect to " + aiProvider + " for the error(s) printed above!");
