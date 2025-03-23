@@ -256,7 +256,7 @@ public final class CraftGPT extends JavaPlugin {
         try {
             // Create our AIService implementation
             ProviderType providerType = AIServiceFactory.getProviderTypeFromString(aiProvider);
-            aiService = AIServiceFactory.createService(providerType, getConfig());
+            aiService = AIServiceFactory.createService(providerType, getConfig(), this);
             
             String baseUrl = getConfig().getString("base-url");
             if (!baseUrl.equals("https://api.openai.com/")) {
