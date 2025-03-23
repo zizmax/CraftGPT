@@ -25,6 +25,12 @@ public class LangChain4jOpenAiService implements AIService {
     public LangChain4jOpenAiService(String apiKey, String baseUrl, Integer timeout) {
         // Store the configuration for later use
         this.apiKey = apiKey;
+        
+        // LangChain4j requires the base URL without trailing slash
+        // Default is "https://api.openai.com/"
+        if (baseUrl != null && baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
         this.baseUrl = baseUrl;
         this.timeout = timeout;
         
@@ -57,6 +63,8 @@ public class LangChain4jOpenAiService implements AIService {
                     .timeout(Duration.ofSeconds(timeout))
                     .temperature(Double.valueOf(temperature))
                     .maxTokens(maxTokens)
+                    .logRequests(false)
+                    .logResponses(false)
                     .build();
                     
             ChatResponse response = configuredModel.chat(messages);
@@ -80,6 +88,8 @@ public class LangChain4jOpenAiService implements AIService {
                     .timeout(Duration.ofSeconds(timeout))
                     .temperature(temperature)
                     .modelName(model)
+                    .logRequests(false)
+                    .logResponses(false)
                     .build();
             
             // Get response from the model
@@ -119,19 +129,25 @@ public class LangChain4jOpenAiService implements AIService {
         if (e.getMessage() != null) {
             int statusCode = 500;
             String type = "api_error";
+            String message = e.getMessage();
             
-            if (e.getMessage().contains("401") || e.getMessage().contains("Authentication")) {
+            if (message.contains("401") || message.contains("Authentication")) {
                 statusCode = 401;
                 type = "authentication_error";
-            } else if (e.getMessage().contains("429") || e.getMessage().contains("Rate limit")) {
+            } else if (message.contains("429") || message.contains("Rate limit")) {
                 statusCode = 429;
                 type = "rate_limit_exceeded";
-            } else if (e.getMessage().contains("quota") || e.getMessage().contains("insufficient_quota")) {
+            } else if (message.contains("quota") || message.contains("insufficient_quota")) {
                 statusCode = 429;
                 type = "insufficient_quota";
+            } else if (message.contains("404") || message.contains("Not Found")) {
+                statusCode = 404;
+                type = "endpoint_not_found";
+                message += "\nPossible cause: LangChain4j may be using the wrong URL format. Check that your base URL is correct. " +
+                           "Current base URL: " + baseUrl;
             }
             
-            return new OpenAiHttpException(e.getMessage(), statusCode, type, e);
+            return new OpenAiHttpException(message, statusCode, type, e);
         }
         
         return new RuntimeException("Error calling OpenAI API: " + e.getMessage(), e);
