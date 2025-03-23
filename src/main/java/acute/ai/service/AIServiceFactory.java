@@ -43,7 +43,7 @@ public class AIServiceFactory {
         String baseUrl = config.getString("base-url");
         Integer timeout = config.getInt("timeout");
         
-        return new SpringOpenAiService(apiKey, baseUrl, timeout);
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout);
     }
     
     /**
