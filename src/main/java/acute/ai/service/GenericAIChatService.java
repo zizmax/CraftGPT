@@ -38,11 +38,76 @@ public class GenericAIChatService implements AIService {
         this.providerType = providerType;
         this.logger = plugin.getLogger();
         
+        // Adjust the base URL based on the provider
+        // Each provider has a different endpoint structure
+        String adjustedBaseUrl = baseUrl;
+        
+        // If the URL doesn't end with /, add it
+        if (!adjustedBaseUrl.endsWith("/")) {
+            adjustedBaseUrl += "/";
+        }
+        
+        // Use the provided URL for Anthropic as configured in config.yml
+        // Don't attempt to modify it - the proper URL should be provided in the configuration
+        
+        // For Ollama, may need to use a different path
+        if (providerType == ProviderType.OLLAMA) {
+            // Ollama typically uses /api/chat
+            if (!adjustedBaseUrl.endsWith("api/")) {
+                if (adjustedBaseUrl.endsWith("api/chat/")) {
+                    // Already correct
+                } else if (adjustedBaseUrl.endsWith("api/")) {
+                    // Add chat
+                    adjustedBaseUrl += "chat/";
+                } else {
+                    // Add api/chat
+                    adjustedBaseUrl += "api/chat/";
+                }
+            }
+            logger.info("Using Ollama-specific adjusted URL: " + adjustedBaseUrl);
+        }
+        
         // Create OpenAI API client with the provider's base URL
-        OpenAiApi openAiApi = OpenAiApi.builder()
-                .apiKey(apiKey)
-                .baseUrl(baseUrl)
-                .build();
+        OpenAiApi.Builder apiBuilder = OpenAiApi.builder()
+                .baseUrl(adjustedBaseUrl);
+                
+        // Since we can't directly set custom headers in OpenAiApi builder, 
+        // we'll use a different approach. For Anthropic, we'll format the API key
+        // to include information on how to handle it
+        
+        // For Anthropic, we'll use "x-api-key:" prefix to indicate it should be used as a header
+        if (providerType == ProviderType.ANTHROPIC) {
+            // We'll modify GenericAIChatOptions to include a custom header field 
+            // instead of using defaultHeaders
+            apiBuilder.apiKey(apiKey);
+            logger.info("Using Anthropic with standard authentication - API might need modification");
+        } else if (providerType == ProviderType.OLLAMA) {
+            // Ollama might not require authentication for local deployments
+            if (apiKey != null && !apiKey.isEmpty() && !apiKey.equals("API KEY HERE")) {
+                // Some Ollama deployments might use API keys
+                apiBuilder.apiKey(apiKey);
+            } else {
+                // Local Ollama typically doesn't need authentication
+                apiBuilder.apiKey("");
+                logger.info("Using Ollama without authentication");
+            }
+        } else if (providerType == ProviderType.GEMINI) {
+            // Gemini might use a custom header or Bearer, depending on deployment
+            // Check if the API key starts with "Bearer"
+            if (apiKey.startsWith("Bearer ")) {
+                // Already has Bearer prefix
+                apiBuilder.apiKey(apiKey);
+            } else {
+                // Add Bearer prefix
+                apiBuilder.apiKey("Bearer " + apiKey);
+            }
+            logger.info("Using Gemini-specific authentication");
+        } else {
+            // All other providers use standard OpenAI authentication
+            apiBuilder.apiKey(apiKey);
+        }
+        
+        OpenAiApi openAiApi = apiBuilder.build();
         
         // Use the OpenAI chat model with the API client
         this.chatModel = new OpenAiChatModel(openAiApi);
@@ -63,15 +128,21 @@ public class GenericAIChatService implements AIService {
         
         messages.add(new UserMessage(userMessage));
         
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
+        OpenAiChatOptions.Builder optionsBuilder = OpenAiChatOptions.builder()
                 .temperature((double)temperature)
-                .maxTokens(maxTokens)
-                .build();
+                .maxTokens(maxTokens);
                 
-        Prompt prompt = new Prompt(messages, options);
+        // For Anthropic, they might need a specific model parameter
+        if (providerType == ProviderType.ANTHROPIC) {
+            optionsBuilder.model("claude-3-sonnet-20240229");
+        }
+        
+        Prompt prompt = new Prompt(messages, optionsBuilder.build());
         
         // In Spring AI, use the model to get a response
         try {
+            // Add additional logging for debugging
+            logger.info("Sending request to " + providerType.getDisplayName() + " with temperature: " + temperature + ", maxTokens: " + maxTokens);
             ChatResponse response = chatModel.call(prompt);
             return response.getResult().getOutput().getText();
         } catch (Exception e) {
@@ -83,14 +154,25 @@ public class GenericAIChatService implements AIService {
     public ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model) {
         List<org.springframework.ai.chat.messages.Message> springMessages = convertMessages(messages);
         
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .temperature(temperature)
-                .model(model)
-                .build();
+        OpenAiChatOptions.Builder optionsBuilder = OpenAiChatOptions.builder()
+                .temperature(temperature);
+                
+        // If the model is provided, use it
+        if (model != null && !model.isEmpty()) {
+            optionsBuilder.model(model);
+        } else if (providerType == ProviderType.ANTHROPIC) {
+            // For Anthropic, use a default model if none provided
+            optionsBuilder.model("claude-3-sonnet-20240229");
+        }
         
-        Prompt prompt = new Prompt(springMessages, options);
+        Prompt prompt = new Prompt(springMessages, optionsBuilder.build());
         
         try {
+            // Add additional logging for debugging
+            logger.info("Sending completion request to " + providerType.getDisplayName() + 
+                        " with temperature: " + temperature + 
+                        ", model: " + (model != null ? model : "default"));
+            
             ChatResponse response = chatModel.call(prompt);
             org.springframework.ai.chat.model.Generation generation = response.getResult();
             

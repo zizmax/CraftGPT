@@ -41,6 +41,14 @@ model: "gpt-4o"  # Default model to use (model names vary by provider)
 
 # Provider-specific settings:
 provider-settings:
+  # Provider-specific base URLs (if blank, uses the default base-url above)
+  base-urls:
+    openai: ""  # default is already https://api.openai.com/
+    anthropic: "https://api.anthropic.com/v1/messages"  # Anthropic endpoint for Messages API
+    gemini: ""  # default varies by deployment
+    ollama: "http://localhost:11434/api/chat"  # Default local Ollama endpoint
+  
+  # Provider-specific models
   openai:
     models:
       - "gpt-4o"

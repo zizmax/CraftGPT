@@ -63,6 +63,16 @@ public class AIServiceFactory {
         String apiKey = config.getString("api_key");
         String baseUrl = config.getString("base-url");
         
+        // Check if there's a provider-specific base URL
+        String providerKey = providerType.name().toLowerCase();
+        String providerBaseUrl = config.getString("provider-settings.base-urls." + providerKey);
+        
+        // Use provider-specific base URL if available
+        if (providerBaseUrl != null && !providerBaseUrl.isEmpty()) {
+            baseUrl = providerBaseUrl;
+            plugin.getLogger().info("Using provider-specific base URL for " + providerType.getDisplayName() + ": " + baseUrl);
+        }
+        
         // Load available models for this provider
         Map<String, String> modelMap = getModelsForProvider(providerType, config);
         
