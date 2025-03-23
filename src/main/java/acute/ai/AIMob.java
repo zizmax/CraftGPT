@@ -1,7 +1,7 @@
 package acute.ai;
 
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
+import acute.ai.service.ChatMessage;
+import acute.ai.service.ChatMessageRole;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;

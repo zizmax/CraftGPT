@@ -1,9 +1,6 @@
 package acute.ai;
 
-import com.theokanning.openai.OpenAiHttpException;
-import com.theokanning.openai.Usage;
-import com.theokanning.openai.completion.chat.*;
-import io.reactivex.Flowable;
+import acute.ai.service.*;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ClickEvent;
@@ -835,13 +832,24 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {
                     @Override
                     public void run() {
-                        ChatCompletionResult chatCompletions = null;
+                        ChatCompletionResponse chatCompletions = null;
                         ChatMessage chatMessageResponse = null;
                         String errorSignature = null;
                         for (int i = 0; i < 3; i++) {
                             try {
-                                chatCompletions = craftGPT.openAIService.createChatCompletion(completionRequest);
-                                chatMessageResponse = chatCompletions.getChoices().get(0).getMessage();
+                                // Convert ChatMessage to Message
+                                List<Message> messageList = new ArrayList<>();
+                                for (ChatMessage chatMsg : completionRequest.getMessages()) {
+                                    messageList.add(new Message(chatMsg.getRole(), chatMsg.getContent()));
+                                }
+                                
+                                chatCompletions = craftGPT.aiService.chatCompletion(
+                                    messageList,
+                                    completionRequest.getTemperature(),
+                                    completionRequest.getModel()
+                                );
+                                Message responseMessage = chatCompletions.getChoices().get(0).getMessage();
+                                chatMessageResponse = new ChatMessage(responseMessage.getRole(), responseMessage.getContent());
                                 break;
                             } catch (OpenAiHttpException e) {
                                 if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
@@ -851,7 +859,7 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                     errorSignature = e.statusCode + e.type;
                                 }
                             } catch (Exception e) {
-                                craftGPT.getLogger().warning(String.format("[Try %s] Non-OpenAI error: " + e.getMessage(), i));
+                                craftGPT.getLogger().warning(String.format("[Try %s] Non-API error: " + e.getMessage(), i));
                                 if (!e.getMessage().contains("timeout")) {
                                     e.printStackTrace();
                                 }
@@ -877,7 +885,9 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                 recipient.sendMessage(prefix + finalChatMessageResponse.getContent());
                             }
 
-                            chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
+                            // Convert from Message to ChatMessage
+                            Message responseMsg = chatCompletions.getChoices().get(0).getMessage();
+                            chatMessages.add(new ChatMessage(responseMsg.getRole(), responseMsg.getContent()));
                             if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
                                 craftGPT.craftGPTData.get(entity.getUniqueId().toString()).setMessages(chatMessages);
                                 craftGPT.toggleWaitingOnAPI(entity);
@@ -935,11 +945,13 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                         line.add(String.format("<%s> ", aiMob.getName()));
                         AtomicBoolean firstToken = new AtomicBoolean(true);
 
-                        Flowable<ChatCompletionChunk> chatCompletionResultFlowable = craftGPT.openAIService.streamChatCompletion(completionRequest);
-
-
-                        chatCompletionResultFlowable.forEach(chatCompletions -> {
-                            ChatMessage chatMessageStream = chatCompletions.getChoices().get(0).getMessage();
+                        // Get stream response from service
+                        if (craftGPT.aiService instanceof SpringOpenAiService) {   
+                            SpringOpenAiService springService = (SpringOpenAiService)craftGPT.aiService;                         
+                            springService.streamChatCompletion(completionRequest)
+                            .subscribe(chatCompletions -> {
+                                Message messageStream = chatCompletions.getChoices().get(0).getMessage();
+                                ChatMessage chatMessageStream = new ChatMessage(messageStream.getRole(), messageStream.getContent());
 
 
                             String deltaString = chatMessageStream.getContent();
@@ -992,7 +1004,8 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                     if (craftGPT.debug) craftGPT.getLogger().info("STREAMED: " + finalLineTemp);
                                 }
                                 if (chatCompletions.getChoices().get(0).getMessage() != null) {
-                                    chatMessages.add(chatCompletions.getChoices().get(0).getMessage());
+                                    Message msg = chatCompletions.getChoices().get(0).getMessage();
+                                    chatMessages.add(new ChatMessage(msg.getRole(), msg.getContent()));
                                 }
 
                                 if (craftGPT.craftGPTData.containsKey(entity.getUniqueId().toString())) {
@@ -1001,7 +1014,14 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                                     craftGPT.toggleWaitingOnAPI(entity);
                                 }
                             }
-                        });
+                            });
+                        } else {
+                            craftGPT.getLogger().warning("Streaming is only supported with Spring OpenAI service");
+                            for (Player recipient : recipients) {
+                                recipient.sendMessage(aiMob.getPrefix().replace("%NAME%", aiMob.getName()) + " " + ChatColor.RED + "Streaming not supported with this AI provider.");
+                            }
+                            craftGPT.toggleWaitingOnAPI(entity);
+                        }
                     }
                 });
             }
