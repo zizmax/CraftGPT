@@ -821,10 +821,18 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                 chatMessagesToSend.set(0, injectChattingPlayersIntoPrompt(entity, chatMessagesToSend.get(0)));
             }
 
+            // Get the correct model based on the current provider
+            String model;
+            if (craftGPT.providerType == ProviderType.GEMINI) {
+                model = craftGPT.getConfig().getString("gemini-model", "gemini-1.5-pro");
+            } else {
+                model = craftGPT.getConfig().getString("model", "gpt-4o");
+            }
+            
             ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                     .messages(chatMessagesToSend)
                     .temperature((double) aiMob.getTemperature())
-                    .model(craftGPT.getConfig().getString("model"))
+                    .model(model)
                     .build();
 
             Bukkit.getScheduler().runTaskAsynchronously(craftGPT, new Runnable() {

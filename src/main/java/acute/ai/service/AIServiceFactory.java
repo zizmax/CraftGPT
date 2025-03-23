@@ -18,12 +18,11 @@ public class AIServiceFactory {
         switch (providerType) {
             case OPENAI:
                 return createOpenAiService(config);
+            case GEMINI:
+                return createGeminiService(config);
             case ANTHROPIC:
                 // Placeholder for future implementation
                 throw new UnsupportedOperationException("Anthropic Claude support is not yet implemented");
-            case GEMINI:
-                // Placeholder for future implementation
-                throw new UnsupportedOperationException("Google Gemini support is not yet implemented");
             case OLLAMA:
                 // Placeholder for future implementation
                 throw new UnsupportedOperationException("Ollama support is not yet implemented");
@@ -44,6 +43,20 @@ public class AIServiceFactory {
         Integer timeout = config.getInt("timeout");
         
         return new SpringOpenAiService(apiKey, baseUrl, timeout);
+    }
+    
+    /**
+     * Create a Gemini service based on configuration
+     * 
+     * @param config The plugin configuration
+     * @return An AIService implementation for Google Gemini
+     */
+    private static AIService createGeminiService(FileConfiguration config) {
+        String credentialsPath = config.getString("gemini-credentials-path");
+        String projectId = config.getString("gemini-project-id");
+        String location = config.getString("gemini-location");
+        
+        return new SpringGeminiService(credentialsPath, projectId, location);
     }
     
     /**

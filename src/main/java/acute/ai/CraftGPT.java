@@ -46,6 +46,7 @@ public final class CraftGPT extends JavaPlugin {
     public NamespacedKey autoSpawnChunkFlagKey = new NamespacedKey(this, "chunk-flag");
 
     public String aiProvider = "OpenAI";
+    public ProviderType providerType = ProviderType.OPENAI;
 
     public boolean debug = false;
     public boolean apiKeySet = false;
@@ -143,7 +144,7 @@ public final class CraftGPT extends JavaPlugin {
         int bStatsId = 18710;
         Metrics metrics = new Metrics(this, bStatsId);
 
-        enableOpenAI();
+        enableAI();
 
         if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new PlaceholderAPIExpansion(this).register();
@@ -243,35 +244,65 @@ public final class CraftGPT extends JavaPlugin {
         this.usageFileConfig = YamlConfiguration.loadConfiguration(usageFile);
     }
 
-    public void enableOpenAI() {
-        String key = getConfig().getString("api_key");
-        if (key == null || key.length() < 15) {
-            getLogger().severe("No API key specified in config! Must set an API key for CraftGPT to work!");
+    public void enableAI() {
+        // Determine the provider from config
+        String configuredProvider = getConfig().getString("ai-provider", "openai");
+        providerType = AIServiceFactory.getProviderTypeFromString(configuredProvider);
+        aiProvider = providerType.getDisplayName();
+        
+        // Validate credentials based on provider type
+        boolean credentialsValid = false;
+        
+        if (providerType == ProviderType.OPENAI) {
+            String key = getConfig().getString("api_key");
+            if (key == null || key.length() < 15) {
+                getLogger().severe("No API key specified in config! Must set an API key for OpenAI to work!");
+                return;
+            } else {
+                credentialsValid = true;
+            }
+        } else if (providerType == ProviderType.GEMINI) {
+            String credentialsPath = getConfig().getString("gemini-credentials-path");
+            String projectId = getConfig().getString("gemini-project-id");
+            String location = getConfig().getString("gemini-location");
+            
+            if (credentialsPath == null || credentialsPath.equals("PATH TO GOOGLE CLOUD CREDENTIALS JSON") || 
+                projectId == null || projectId.equals("your-google-cloud-project-id")) {
+                getLogger().severe("Gemini configuration is incomplete! Check gemini-credentials-path and gemini-project-id in config.yml");
+                return;
+            } else {
+                credentialsValid = true;
+            }
+        } else {
+            getLogger().severe("Unsupported provider type: " + providerType.getDisplayName());
             return;
         }
-        else {
+        
+        if (credentialsValid) {
             apiKeySet = true;
         }
         
         try {
             // Create our AIService implementation
-            ProviderType providerType = AIServiceFactory.getProviderTypeFromString(aiProvider);
             aiService = AIServiceFactory.createService(providerType, getConfig());
             
-            String baseUrl = getConfig().getString("base-url");
-            if (!baseUrl.equals("https://api.openai.com/")) {
-                aiProvider = baseUrl;
+            // For OpenAI, check if using a custom base URL
+            if (providerType == ProviderType.OPENAI) {
+                String baseUrl = getConfig().getString("base-url");
+                if (!baseUrl.equals("https://api.openai.com/")) {
+                    aiProvider = baseUrl;
+                }
             }
             
             new BukkitRunnable() {
                 @Override
                 public void run() {
                     long start = System.currentTimeMillis();
-                    getLogger().info("Connecting to API (" + getConfig().getString("base-url") + ")...");
+                    getLogger().info("Connecting to " + aiProvider + " API...");
                     String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
                     if (response == null) {
                         getLogger().severe("Tried 3 times and couldn't connect to " + aiProvider + " for the error(s) printed above!");
-                        getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
+                        getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have valid API credentials.");
                     } else {
                         long end = System.currentTimeMillis();
                         getLogger().info("Connected to " + aiProvider + "!" + " (" +  ((end-start) / 1000f) + "s)");
@@ -454,13 +485,25 @@ public final class CraftGPT extends JavaPlugin {
         getLogger().warning("Error type: " + e.type);
         getLogger().warning("API error code: " + e.statusCode);
         getLogger().warning("API error message: " + e.getMessage());
-        if (e.getMessage().contains("quota")) {
-            getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
-            getLogger().warning("Using the API *REQUIRES* credits in your account which can either be purchased with a credit card or through a free trial.");
-            getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
-        }
-        else if (e.getMessage().contains("Rate limit reached")) {
-            getLogger().warning("This is most often occurs because the OpenAI free trial credits have a low rate limit of 3 messages/min. You must wait to send messages or add a billing method to your account.");
+        
+        if (providerType == ProviderType.OPENAI) {
+            if (e.getMessage().contains("quota")) {
+                getLogger().warning("This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+                getLogger().warning("Using the API *REQUIRES* credits in your account which can either be purchased with a credit card or through a free trial.");
+                getLogger().warning("More information on OpenAI errors available here: https://help.openai.com/en/collections/3808446-api-error-codes-explained");
+            }
+            else if (e.getMessage().contains("Rate limit reached")) {
+                getLogger().warning("This is most often occurs because the OpenAI free trial credits have a low rate limit of 3 messages/min. You must wait to send messages or add a billing method to your account.");
+            }
+        } else if (providerType == ProviderType.GEMINI) {
+            if (e.getMessage().contains("credentials") || e.getMessage().contains("authentication")) {
+                getLogger().warning("This is most often caused by invalid Google Cloud credentials or permissions issues.");
+                getLogger().warning("Make sure your service account has the necessary permissions and the credentials file is correctly configured.");
+            }
+            else if (e.getMessage().contains("rate") || e.getMessage().contains("quota")) {
+                getLogger().warning("This may be due to rate limits or quota restrictions on your Google Cloud project.");
+                getLogger().warning("Check your Google Cloud Console for quota information and current usage.");
+            }
         }
     }
 
@@ -529,8 +572,17 @@ public final class CraftGPT extends JavaPlugin {
         getLogger().severe("Mob at: " + entity.getLocation() + " failed to enable due to error printed above!");
         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.RED + "ERROR: API failure!");
         player.sendMessage(ChatColor.RED + "=======================================");
-        player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
-        player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");
+        
+        if (providerType == ProviderType.OPENAI) {
+            player.sendMessage(ChatColor.RED + "- This is most often caused by an invalid OpenAI API key or because your OpenAI account is not a paid account/does not have a payment method configured.");
+            player.sendMessage(ChatColor.RED + "- Using the API" + ChatColor.UNDERLINE + ChatColor.ITALIC + ChatColor.WHITE + " requires " + ChatColor.RESET + ChatColor.RED + "credits in your account from a credit card or free trial.");
+        } else if (providerType == ProviderType.GEMINI) {
+            player.sendMessage(ChatColor.RED + "- This is most often caused by invalid Google Cloud credentials or permissions issues.");
+            player.sendMessage(ChatColor.RED + "- Make sure your service account has the necessary permissions and the credentials file is correctly configured.");
+        } else {
+            player.sendMessage(ChatColor.RED + "- There was an error connecting to the AI provider: " + providerType.getDisplayName());
+        }
+        
         player.sendMessage(ChatColor.RED + "- For more information on the exact error, see the server logs.");
         player.sendMessage(ChatColor.RED + "=======================================");
     }

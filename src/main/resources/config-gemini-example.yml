@@ -1,0 +1,48 @@
+# CraftGPT Google Gemini Configuration Example
+
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                  CRITICAL CONFIGURATION                                      | #
+# |                                                                                              | #
+# |                           - required for CraftGPT to work! -                                 | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+# AI Provider Configuration (options: openai, gemini)
+ai-provider: "gemini"
+
+# OpenAI API Configuration (not used with Gemini)
+api_key: ""
+
+# Google Gemini API Configuration 
+# - Required for Gemini provider
+# - credentials-path should point to your Google Cloud service account JSON key file
+gemini-credentials-path: "/path/to/your/google-cloud-credentials.json"
+gemini-project-id: "your-google-cloud-project-id"
+gemini-location: "us-central1"
+gemini-model: "gemini-1.5-pro"
+
+# +----------------------------------------------------------------------------------------------+ #
+# |                                                                                              | #
+# |                                        Main settings                                         | #
+# |                                                                                              | #
+# |                                 Customize CraftGPT's core                                    | #
+# |                                                                                              | #
+# +----------------------------------------------------------------------------------------------+ #
+
+# Common API settings:
+default-temperature: 1.0
+messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
+timeout: 10 # Seconds before the HTTP connection times out and the request is retried
+
+# OpenAI specific settings (not used with Gemini):
+base-url: "https://api.openai.com/"
+model: "gpt-4o"
+proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks OpenAI.
+  enabled: false
+  host: "0.0.0.0"
+  port: 1000
+  authentication:
+    enabled: false
+    username: "user"
+    password: "pass"

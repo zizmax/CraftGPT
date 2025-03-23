@@ -93,7 +93,7 @@ public class Commands implements TabExecutor {
             craftGPT.createUsageFile(false);
             craftGPT.writeData(craftGPT);
             craftGPT.readData(craftGPT);
-            craftGPT.enableOpenAI();
+            craftGPT.enableAI();
 
             // Check for updates
             UpdateChecker.init(craftGPT, craftGPT.spigotID).requestUpdateCheck().whenComplete((result, exception) -> {
@@ -138,7 +138,7 @@ public class Commands implements TabExecutor {
         if (command.getName().equalsIgnoreCase("craftgpt") || command.getName().equalsIgnoreCase("cg")) {
 
             if(!craftGPT.apiConnected) {
-                sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.no-api")));
+                sender.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.no-api").replace("OpenAI", craftGPT.aiProvider)));
             }
 
             // Commands that can be run with no API key

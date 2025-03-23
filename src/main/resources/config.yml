@@ -20,7 +20,19 @@
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
+# AI Provider Configuration (options: openai, gemini)
+ai-provider: "openai"
+
+# OpenAI API Configuration
 api_key: "API KEY HERE"
+
+# Google Gemini API Configuration 
+# - Required only if using Gemini as provider
+# - credentials-path should point to your Google Cloud service account JSON key file
+gemini-credentials-path: "PATH TO GOOGLE CLOUD CREDENTIALS JSON"
+gemini-project-id: "your-google-cloud-project-id"
+gemini-location: "us-central1"
+gemini-model: "gemini-1.5-pro"
 
 # +----------------------------------------------------------------------------------------------+ #
 # |                                                                                              | #
@@ -30,10 +42,12 @@ api_key: "API KEY HERE"
 # |                                                                                              | #
 # +----------------------------------------------------------------------------------------------+ #
 
-# OpenAI API settings:
+# Common API settings:
 default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
 timeout: 10 # Seconds before the HTTP connection times out and the request is retried
+
+# OpenAI specific settings:
 base-url: "https://api.openai.com/"
 model: "gpt-4o"
 proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks OpenAI.
@@ -303,10 +317,10 @@ messages:
     updates: "Checking for updates..."
   no-permission: "You do not have permission to do that!"
   commands:
-    no-api: "WARNING: CraftGPT is not connected to OpenAI! Most features of the plugin will not work! See console logs for error details."
+    no-api: "WARNING: CraftGPT is not connected to the AI provider! Most features of the plugin will not work! See console logs for error details."
     malformed-command-1: "Malformed command or must run command as player!"
     malformed-command-2: "Malformed command! Try &c/cg help"
-    key-required: "CraftGPT requires an OpenAI API key set in the config!"
+    key-required: "CraftGPT requires valid API credentials set in the config!"
     craftgpt-no-console: "Cannot use /craftgpt as console!"
     api-connected:
       no-aimob-selected: "No AI mob selected!"
