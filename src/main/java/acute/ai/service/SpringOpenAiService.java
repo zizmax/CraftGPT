@@ -8,7 +8,6 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
-import reactor.core.publisher.Flux;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -123,53 +122,6 @@ public class SpringOpenAiService implements AIService {
         }
         
         return new RuntimeException("Error calling OpenAI API: " + e.getMessage(), e);
-    }
-    
-    public Flux<ChatCompletionChunk> streamChatCompletion(ChatCompletionRequest request) {
-        // Convert ChatMessages to Messages for our conversion method
-        List<Message> messageList = new ArrayList<>();
-        for (ChatMessage chatMsg : request.getMessages()) {
-            messageList.add(new Message(chatMsg.getRole(), chatMsg.getContent()));
-        }
-        
-        List<org.springframework.ai.chat.messages.Message> springMessages = 
-                convertMessages(messageList);
-        
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
-                .temperature((double)request.getTemperature())
-                .model(request.getModel())
-                .build();
-        
-        if (request.getMaxTokens() != null) {
-            options = OpenAiChatOptions.builder()
-                    .temperature((double)request.getTemperature())
-                    .model(request.getModel())
-                    .maxTokens(request.getMaxTokens())
-                    .build();
-        }
-        
-        Prompt prompt = new Prompt(springMessages, options);
-        
-        // Use the streaming chat model for response streams
-        return chatModel.stream(prompt)
-                .map(response -> {
-                    org.springframework.ai.chat.model.Generation generation = response.getResult();
-                    String content = generation.getOutput().getText();
-                    
-                    List<Choice> choices = new ArrayList<>();
-                    choices.add(new Choice(
-                            new ChatMessage(ChatMessageRole.ASSISTANT.value(), content),
-                            null,
-                            0));
-                    
-                    return new ChatCompletionChunk(
-                            UUID.randomUUID().toString(),
-                            "chat.completion.chunk",
-                            System.currentTimeMillis() / 1000,
-                            request.getModel(),
-                            choices
-                    );
-                });
     }
     
     private List<org.springframework.ai.chat.messages.Message> convertMessages(List<Message> messages) {
