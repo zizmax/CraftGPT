@@ -2,15 +2,15 @@ package acute.ai.service;
 
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
-import org.springframework.ai.chat.ChatClient;
-import org.springframework.ai.chat.ChatResponse;
-import org.springframework.ai.chat.StreamingChatClient;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.StreamingChatClient;
+import org.springframework.ai.chat.client.ChatCompletionResponse;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatClient;
-import org.springframework.ai.vertexai.gemini.VertexAiGeminiChatOptions;
+import org.springframework.ai.vertexai.gemini.client.VertexAiGeminiChatClient;
+import org.springframework.ai.vertexai.gemini.client.VertexAiGeminiChatOptions;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +52,7 @@ public class GeminiService implements AIService, OpenAiService {
         messages.add(new UserMessage(userMessage));
         
         Prompt prompt = new Prompt(messages, createOptions(temperature, maxTokens, null));
-        ChatResponse response = chatClient.call(prompt);
+        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
         
         return response.getResult().getOutput().getContent();
     }
@@ -62,7 +62,7 @@ public class GeminiService implements AIService, OpenAiService {
         List<org.springframework.ai.chat.messages.Message> springMessages = convertMessagesToSpring(messages);
         
         Prompt prompt = new Prompt(springMessages, createOptions(temperature, 0, model));
-        ChatResponse response = chatClient.call(prompt);
+        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
         
         Message responseMessage = new Message("assistant", response.getResult().getOutput().getContent());
         TokenUsage tokenUsage = new TokenUsage(
@@ -93,7 +93,7 @@ public class GeminiService implements AIService, OpenAiService {
                 request.getModel()));
         
         // Call Spring AI
-        ChatResponse response = chatClient.call(prompt);
+        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
         
         // Convert Spring AI response to our format
         ChatMessage responseMessage = new ChatMessage(
@@ -143,7 +143,7 @@ public class GeminiService implements AIService, OpenAiService {
             final AtomicReference<Throwable> errorRef = new AtomicReference<>();
             
             // Stream from Spring AI
-            org.springframework.ai.chat.StreamingChatResponse streaming = streamingChatClient.stream(prompt);
+            org.springframework.ai.chat.client.StreamingChatResponse streaming = streamingChatClient.stream(prompt);
             
             streaming.subscribe(
                 chunk -> {
@@ -305,7 +305,7 @@ public class GeminiService implements AIService, OpenAiService {
     private static class SpringStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
         private final StreamingChatClient streamingChatClient;
         private final Prompt prompt;
-        private org.springframework.ai.chat.StreamingChatResponse streamingResponse;
+        private org.springframework.ai.chat.client.StreamingChatResponse streamingResponse;
         private final List<Consumer<String>> contentHandlers = new ArrayList<>();
         private final List<Runnable> completionHandlers = new ArrayList<>();
         private final List<Consumer<Throwable>> errorHandlers = new ArrayList<>();

@@ -1,15 +1,15 @@
 package acute.ai.service;
 
-import org.springframework.ai.chat.ChatClient;
-import org.springframework.ai.chat.ChatResponse;
-import org.springframework.ai.chat.StreamingChatClient;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ChatResponse;
+import org.springframework.ai.chat.client.StreamingChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
-import org.springframework.ai.openai.OpenAiChatClient;
-import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.client.OpenAiChatClient;
+import org.springframework.ai.openai.client.OpenAiChatOptions;
 import org.springframework.ai.openai.api.OpenAiApi;
 
 import java.util.ArrayList;
@@ -24,7 +24,7 @@ import java.util.function.Consumer;
 /**
  * OpenAI implementation of AIService
  */
-public class OpenAIService implements AIService {
+public class OpenAiService implements AIService {
 
     private final OpenAiChatClient chatClient;
     private final StreamingChatClient streamingChatClient;
@@ -154,7 +154,7 @@ public class OpenAIService implements AIService {
     private static class SpringStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
         private final StreamingChatClient streamingChatClient;
         private final Prompt prompt;
-        private org.springframework.ai.chat.StreamingChatResponse streamingResponse;
+        private org.springframework.ai.chat.client.StreamingChatResponse streamingResponse;
         private final List<Consumer<String>> contentHandlers = new ArrayList<>();
         private final List<Runnable> completionHandlers = new ArrayList<>();
         private final List<Consumer<Throwable>> errorHandlers = new ArrayList<>();

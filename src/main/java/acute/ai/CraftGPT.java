@@ -52,6 +52,7 @@ public final class CraftGPT extends JavaPlugin {
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
     public acute.ai.service.OpenAiService openAIService;
+    public acute.ai.service.AIService aiService;
 
     public static final Random random = new Random();
 
@@ -266,12 +267,19 @@ public final class CraftGPT extends JavaPlugin {
         
         try {
             // Create the appropriate AI service based on the provider
-            openAIService = acute.ai.service.AIServiceFactory.createService(
+            aiService = acute.ai.service.AIServiceFactory.createService(
                     aiProvider, 
                     key, 
                     // Use secondary param if available, otherwise use base-url
                     secondaryParam != null && !secondaryParam.trim().isEmpty() ? secondaryParam : baseUrl
             );
+            
+            // Set the OpenAI service as well for backward compatibility
+            if (aiService instanceof acute.ai.service.OpenAiService) {
+                openAIService = (acute.ai.service.OpenAiService) aiService;
+            } else {
+                openAIService = acute.ai.service.AIServiceAdapter.wrapAsOpenAiService(aiService);
+            }
             
             // Test the connection
             new BukkitRunnable() {

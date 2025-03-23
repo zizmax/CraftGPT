@@ -2,15 +2,15 @@ package acute.ai.service;
 
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
-import org.springframework.ai.chat.ChatClient;
-import org.springframework.ai.chat.ChatResponse;
-import org.springframework.ai.chat.StreamingChatClient;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.ChatResponse;
+import org.springframework.ai.chat.client.StreamingChatClient;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.ollama.OllamaChatClient;
-import org.springframework.ai.ollama.OllamaChatOptions;
+import org.springframework.ai.ollama.client.OllamaChatClient;
+import org.springframework.ai.ollama.client.OllamaChatOptions;
 import org.springframework.ai.ollama.api.OllamaApi;
 
 import java.util.ArrayList;
@@ -68,7 +68,7 @@ public class OllamaService implements AIService, OpenAiService {
         messages.add(new UserMessage(userMessage));
         
         Prompt prompt = new Prompt(messages, createOptions(temperature, 0, null));
-        ChatResponse response = chatClient.call(prompt);
+        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
         
         return response.getResult().getOutput().getContent();
     }
@@ -78,7 +78,7 @@ public class OllamaService implements AIService, OpenAiService {
         List<org.springframework.ai.chat.messages.Message> springMessages = convertMessagesToSpring(messages);
         
         Prompt prompt = new Prompt(springMessages, createOptions(temperature, 0, model));
-        ChatResponse response = chatClient.call(prompt);
+        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
         
         Message responseMessage = new Message("assistant", response.getResult().getOutput().getContent());
         
@@ -114,7 +114,7 @@ public class OllamaService implements AIService, OpenAiService {
                 request.getModel()));
         
         // Call Spring AI
-        ChatResponse response = chatClient.call(prompt);
+        org.springframework.ai.chat.client.ChatResponse response = chatClient.call(prompt);
         
         // Convert Spring AI response to our format
         ChatMessage responseMessage = new ChatMessage(
@@ -167,7 +167,7 @@ public class OllamaService implements AIService, OpenAiService {
             final AtomicReference<Throwable> errorRef = new AtomicReference<>();
             
             // Stream from Spring AI
-            org.springframework.ai.chat.StreamingChatResponse streaming = streamingChatClient.stream(prompt);
+            org.springframework.ai.chat.client.StreamingChatResponse streaming = streamingChatClient.stream(prompt);
             
             streaming.subscribe(
                 chunk -> {
@@ -326,7 +326,7 @@ public class OllamaService implements AIService, OpenAiService {
     private static class SpringStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
         private final StreamingChatClient streamingChatClient;
         private final Prompt prompt;
-        private org.springframework.ai.chat.StreamingChatResponse streamingResponse;
+        private org.springframework.ai.chat.client.StreamingChatResponse streamingResponse;
         private final List<Consumer<String>> contentHandlers = new ArrayList<>();
         private final List<Runnable> completionHandlers = new ArrayList<>();
         private final List<Consumer<Throwable>> errorHandlers = new ArrayList<>();

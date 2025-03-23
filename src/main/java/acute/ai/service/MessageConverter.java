@@ -1,7 +1,7 @@
 package acute.ai.service;
 
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
+import acute.ai.service.ChatMessage;
+import acute.ai.service.ChatMessageRole;
 
 import java.util.ArrayList;
 import java.util.List;

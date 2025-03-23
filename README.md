@@ -38,6 +38,43 @@ Installation:
 
 AI Provider Configuration:
 -------
+CraftGPT now supports multiple AI providers:
+
+### OpenAI
+```yaml
+ai:
+  provider: OpenAI
+  model: gpt-4o
+  secondary_param: ""  # Leave empty for OpenAI
+api_key: sk-your-openai-api-key
+```
+
+### Claude (Anthropic)
+```yaml
+ai:
+  provider: Claude
+  model: claude-3-opus-20240229
+  secondary_param: ""  # Leave empty for Claude
+api_key: sk-ant-your-anthropic-api-key
+```
+
+### Gemini (Google)
+```yaml
+ai:
+  provider: Gemini
+  model: gemini-1.5-pro
+  secondary_param: "your-google-project-id"  # Your Google Cloud project ID
+api_key: your-google-api-key
+```
+
+### Ollama (Local models)
+```yaml
+ai:
+  provider: Ollama
+  model: llama3  # Any model you have installed in Ollama
+  secondary_param: "http://localhost:11434"  # Your Ollama host URL
+api_key: not-used  # Can be any value, not used by Ollama
+```
 Configure the AI provider in `config.yml`:
 
 ```yaml

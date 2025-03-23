@@ -1,13 +1,13 @@
 package acute.ai.service;
 
-import com.theokanning.openai.Usage;
-import com.theokanning.openai.completion.chat.ChatCompletionChunk;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatCompletionResult;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
-import com.theokanning.openai.completion.chat.Choice;
-import com.theokanning.openai.service.OpenAiService;
+// Using our own classes instead of com.theokanning.openai
+import acute.ai.service.ChatCompletionChunk;
+import acute.ai.service.ChatCompletionRequest;
+import acute.ai.service.ChatCompletionResult;
+import acute.ai.service.ChatMessage;
+import acute.ai.service.ChatMessageRole;
+import acute.ai.service.Choice;
+import acute.ai.service.Usage;
 import io.reactivex.Flowable;
 
 import java.util.ArrayList;
@@ -18,12 +18,59 @@ import java.util.function.Consumer;
 /**
  * Adapter to make our AIService compatible with the OpenAiService interface
  */
-public class AIServiceAdapter extends OpenAiService {
+public class AIServiceAdapter implements OpenAiService {
+    
+    private static final String DUMMY_API_KEY = "dummy-api-key";
+    
+    /**
+     * Methods required by the OpenAiService interface that we don't actually use
+     * but need to implement for compatibility
+     */
+    @Override
+    public String simpleChatCompletion(String systemMessage, String userMessage, float temperature, int maxTokens) {
+        return aiService.simpleChatCompletion(systemMessage, userMessage, temperature, maxTokens);
+    }
+    
+    @Override
+    public ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model) {
+        return aiService.chatCompletion(messages, temperature, model);
+    }
+    
+    @Override
+    public StreamingChatCompletionResponse streamChatCompletion(List<Message> messages, double temperature, String model) {
+        return aiService.streamChatCompletion(messages, temperature, model);
+    }
+    
+    @Override
+    public ProviderType getProviderType() {
+        return aiService.getProviderType();
+    }
+    
+    @Override
+    public Map<String, String> getAvailableModels() {
+        return aiService.getAvailableModels();
+    }
+    
+    @Override
+    public boolean testConnection() {
+        return aiService.testConnection();
+    }
+    
+    @Override
+    public Optional<Map<String, Object>> getServiceStatus() {
+        return aiService.getServiceStatus();
+    }
+    
+    /**
+     * Helper method to wrap an AIService as an OpenAiService
+     */
+    public static OpenAiService wrapAsOpenAiService(AIService aiService) {
+        return new AIServiceAdapter(aiService);
+    }
 
     private final AIService aiService;
     
     public AIServiceAdapter(AIService aiService) {
-        super("dummy-api-key"); // This constructor is never actually used since we override all methods
         this.aiService = aiService;
     }
     

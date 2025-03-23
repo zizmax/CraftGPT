@@ -34,10 +34,15 @@ api_key: "API KEY HERE"
 ai:
   provider: "OpenAI" # Options: OpenAI, Claude, Gemini, Ollama
   model: "gpt-4o" # Model ID for the selected provider
+  # Examples:
+  # - OpenAI: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-3.5-turbo
+  # - Claude: claude-3-opus-20240229, claude-3-sonnet-20240229, claude-3-haiku-20240307
+  # - Gemini: gemini-1.5-pro, gemini-1.5-flash, gemini-1.0-pro
+  # - Ollama: llama3, mistral, gemma, phi (depends on what models you've installed)
   secondary_param: "" # Secondary parameter - depends on provider:
-                      # - OpenAI: Not used
-                      # - Claude: Not used
-                      # - Gemini: Project ID
+                      # - OpenAI: Not used (leave empty)
+                      # - Claude: Not used (leave empty)
+                      # - Gemini: Project ID (required for Google Gemini)
                       # - Ollama: Host URL (default: http://localhost:11434)
 
 # API settings:
@@ -312,10 +317,10 @@ messages:
     updates: "Checking for updates..."
   no-permission: "You do not have permission to do that!"
   commands:
-    no-api: "WARNING: CraftGPT is not connected to OpenAI! Most features of the plugin will not work! See console logs for error details."
+    no-api: "WARNING: CraftGPT is not connected to any AI provider! Most features of the plugin will not work! See console logs for error details."
     malformed-command-1: "Malformed command or must run command as player!"
     malformed-command-2: "Malformed command! Try &c/cg help"
-    key-required: "CraftGPT requires an OpenAI API key set in the config!"
+    key-required: "CraftGPT requires an API key set in the config!"
     craftgpt-no-console: "Cannot use /craftgpt as console!"
     api-connected:
       no-aimob-selected: "No AI mob selected!"
