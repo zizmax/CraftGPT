@@ -3,10 +3,9 @@ package acute.ai.service;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
 import java.util.*;
@@ -17,72 +16,67 @@ import java.util.stream.Collectors;
  */
 public class LangChain4jOpenAiService implements AIService {
     
-    private final OpenAiChatModel chatModel;
     private final String apiKey;
     private final String baseUrl;
     private final Integer timeout;
+    private final String defaultModel = "gpt-4o"; // Default model to use if none specified
     
     public LangChain4jOpenAiService(String apiKey, String baseUrl, Integer timeout) {
-        // Store the configuration for later use
         this.apiKey = apiKey;
         
-        // LangChain4j requires the API version in the baseUrl
-        // Default expected format: "https://api.openai.com/v1/"
-        // Ensure we have the correct format with /v1/ included
+        // Ensure baseUrl is properly formatted with /v1/ path
         if (baseUrl != null) {
             // Remove trailing slash if present
             if (baseUrl.endsWith("/")) {
                 baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
             }
             
-            // Add /v1/ if not already present
+            // Add /v1 if not already present
             if (!baseUrl.endsWith("/v1")) {
                 baseUrl = baseUrl + "/v1";
             }
             
-            // Ensure there's a trailing slash
+            // Ensure trailing slash
             baseUrl = baseUrl + "/";
         }
         
         this.baseUrl = baseUrl;
         this.timeout = timeout;
-        
-        // Create the chat model using LangChain4j
-        this.chatModel = OpenAiChatModel.builder()
+    }
+    
+    /**
+     * Creates a properly configured OpenAiChatModel instance
+     */
+    private OpenAiChatModel createChatModel(double temperature, int maxTokens, String modelName) {
+        return OpenAiChatModel.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
+                .modelName(modelName != null ? modelName : defaultModel)
+                .temperature(temperature)
+                .maxTokens(maxTokens)
                 .timeout(Duration.ofSeconds(timeout))
-                .logRequests(false)
-                .logResponses(false)
                 .build();
     }
     
     @Override
     public String simpleChatCompletion(String systemMessage, String userMessage, float temperature, int maxTokens) {
         try {
-            // Create request with system and user messages
+            // Create our model with appropriate settings
+            OpenAiChatModel model = createChatModel(temperature, maxTokens, defaultModel);
+            
+            // Create messages
             List<dev.langchain4j.data.message.ChatMessage> messages = new ArrayList<>();
             
             if (systemMessage != null && !systemMessage.isEmpty()) {
-                messages.add(new SystemMessage(systemMessage));
+                messages.add(SystemMessage.from(systemMessage));
             }
             
-            messages.add(new UserMessage(userMessage));
+            messages.add(UserMessage.from(userMessage));
             
-            // Get response from the model
-            OpenAiChatModel configuredModel = OpenAiChatModel.builder()
-                    .apiKey(apiKey)
-                    .baseUrl(baseUrl)
-                    .timeout(Duration.ofSeconds(timeout))
-                    .temperature(Double.valueOf(temperature))
-                    .maxTokens(maxTokens)
-                    .logRequests(false)
-                    .logResponses(false)
-                    .build();
-                    
-            ChatResponse response = configuredModel.chat(messages);
-                    
-            return response.aiMessage().text();
+            // Get response using specified messages
+            ChatResponse response = model.chat(messages);
+            
+            return response.content().text();
         } catch (Exception e) {
             throw convertException(e);
         }
@@ -91,25 +85,17 @@ public class LangChain4jOpenAiService implements AIService {
     @Override
     public ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model) {
         try {
+            // Create our model with appropriate settings
+            OpenAiChatModel chatModel = createChatModel(temperature, 0, model);
+            
             // Convert our messages to LangChain4j messages
             List<dev.langchain4j.data.message.ChatMessage> langChainMessages = convertMessages(messages);
             
-            // Create chat model with these specific parameters
-            OpenAiChatModel configuredModel = OpenAiChatModel.builder()
-                    .apiKey(apiKey)
-                    .baseUrl(baseUrl)
-                    .timeout(Duration.ofSeconds(timeout))
-                    .temperature(temperature)
-                    .modelName(model)
-                    .logRequests(false)
-                    .logResponses(false)
-                    .build();
-            
             // Get response from the model
-            ChatResponse response = configuredModel.chat(langChainMessages);
+            ChatResponse response = chatModel.chat(langChainMessages);
             
             // Build response from the response
-            String content = response.aiMessage().text();
+            String content = response.content().text();
             
             List<Choice> choices = new ArrayList<>();
             choices.add(new Choice(
@@ -156,8 +142,11 @@ public class LangChain4jOpenAiService implements AIService {
             } else if (message.contains("404") || message.contains("Not Found")) {
                 statusCode = 404;
                 type = "endpoint_not_found";
-                message += "\nPossible cause: LangChain4j may be using the wrong URL format. Check that your base URL is correct. " +
+                message += "\nPossible cause: LangChain4j may be using the wrong URL format. " +
                            "Current base URL: " + baseUrl;
+            } else if (message.contains("must provide a model parameter")) {
+                type = "model_parameter_required";
+                message += "\nA model parameter is required but was not provided.";
             }
             
             return new OpenAiHttpException(message, statusCode, type, e);
@@ -177,14 +166,14 @@ public class LangChain4jOpenAiService implements AIService {
         String content = message.getContent();
         
         if (role.equalsIgnoreCase(ChatMessageRole.SYSTEM.value())) {
-            return new dev.langchain4j.data.message.SystemMessage(content);
+            return SystemMessage.from(content);
         } else if (role.equalsIgnoreCase(ChatMessageRole.USER.value())) {
-            return new dev.langchain4j.data.message.UserMessage(content);
+            return UserMessage.from(content);
         } else if (role.equalsIgnoreCase(ChatMessageRole.ASSISTANT.value())) {
-            return new dev.langchain4j.data.message.AiMessage(content);
+            return AiMessage.from(content);
         } else {
             // Default to user message for other roles
-            return new dev.langchain4j.data.message.UserMessage(content);
+            return UserMessage.from(content);
         }
     }
     
