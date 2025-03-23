@@ -76,7 +76,7 @@ public class LangChain4jOpenAiService implements AIService {
             // Get response using specified messages
             ChatResponse response = model.chat(messages);
             
-            return response.content().text();
+            return response.aiMessage().text();
         } catch (Exception e) {
             throw convertException(e);
         }
@@ -95,7 +95,7 @@ public class LangChain4jOpenAiService implements AIService {
             ChatResponse response = chatModel.chat(langChainMessages);
             
             // Build response from the response
-            String content = response.content().text();
+            String content = response.aiMessage().text();
             
             List<Choice> choices = new ArrayList<>();
             choices.add(new Choice(
