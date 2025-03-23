@@ -26,11 +26,24 @@ public class LangChain4jOpenAiService implements AIService {
         // Store the configuration for later use
         this.apiKey = apiKey;
         
-        // LangChain4j requires the base URL without trailing slash
-        // Default is "https://api.openai.com/"
-        if (baseUrl != null && baseUrl.endsWith("/")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        // LangChain4j requires the API version in the baseUrl
+        // Default expected format: "https://api.openai.com/v1/"
+        // Ensure we have the correct format with /v1/ included
+        if (baseUrl != null) {
+            // Remove trailing slash if present
+            if (baseUrl.endsWith("/")) {
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+            }
+            
+            // Add /v1/ if not already present
+            if (!baseUrl.endsWith("/v1")) {
+                baseUrl = baseUrl + "/v1";
+            }
+            
+            // Ensure there's a trailing slash
+            baseUrl = baseUrl + "/";
         }
+        
         this.baseUrl = baseUrl;
         this.timeout = timeout;
         
