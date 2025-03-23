@@ -51,7 +51,7 @@ public final class CraftGPT extends JavaPlugin {
     public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
-    public acute.ai.service.OpenAiService openAIService;
+    public acute.ai.service.OpenAIService openAIService;
     public acute.ai.service.AIService aiService;
 
     public static final Random random = new Random();
