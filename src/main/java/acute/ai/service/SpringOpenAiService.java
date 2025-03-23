@@ -2,9 +2,6 @@ package acute.ai.service;
 
 import io.reactivex.BackpressureStrategy;
 import io.reactivex.Flowable;
-import org.springframework.ai.anthropic.AnthropicChatClient;
-import org.springframework.ai.anthropic.AnthropicChatOptions;
-import org.springframework.ai.anthropic.api.AnthropicApi;
 import org.springframework.ai.chat.ChatClient;
 import org.springframework.ai.chat.ChatResponse;
 import org.springframework.ai.chat.StreamingChatClient;
@@ -12,6 +9,9 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.openai.OpenAiChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.openai.api.OpenAiApi;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,30 +23,29 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 /**
- * Claude (Anthropic) implementation of AIService and our custom OpenAiService interface
+ * OpenAI implementation of AIService and our custom OpenAiService interface
  */
-public class ClaudeService implements AIService, OpenAiService {
+public class SpringOpenAiService implements AIService, OpenAiService {
 
-    private final AnthropicChatClient chatClient;
+    private final OpenAiChatClient chatClient;
     private final StreamingChatClient streamingChatClient;
     private final Map<String, String> availableModels;
     
-    public ClaudeService(String apiKey, String baseUrl) {
-        AnthropicApi anthropicApi = AnthropicApi.builder()
+    public SpringOpenAiService(String apiKey, String baseUrl) {
+        OpenAiApi openAiApi = OpenAiApi.builder()
                 .withApiKey(apiKey)
                 .withBaseUrl(baseUrl)
                 .build();
                 
-        this.chatClient = new AnthropicChatClient(anthropicApi);
+        this.chatClient = new OpenAiChatClient(openAiApi);
         this.streamingChatClient = this.chatClient;
         
         this.availableModels = new HashMap<>();
-        availableModels.put("claude-3-opus-20240229", "Claude 3 Opus");
-        availableModels.put("claude-3-sonnet-20240229", "Claude 3 Sonnet");
-        availableModels.put("claude-3-haiku-20240307", "Claude 3 Haiku");
-        availableModels.put("claude-2.1", "Claude 2.1");
-        availableModels.put("claude-2.0", "Claude 2.0");
-        availableModels.put("claude-instant-1.2", "Claude Instant 1.2");
+        availableModels.put("gpt-4o", "GPT-4o");
+        availableModels.put("gpt-4o-mini", "GPT-4o Mini");
+        availableModels.put("gpt-4-turbo", "GPT-4 Turbo");
+        availableModels.put("gpt-4", "GPT-4");
+        availableModels.put("gpt-3.5-turbo", "GPT-3.5 Turbo");
     }
 
     @Override
@@ -218,7 +217,7 @@ public class ClaudeService implements AIService, OpenAiService {
 
     @Override
     public ProviderType getProviderType() {
-        return ProviderType.CLAUDE;
+        return ProviderType.OPENAI;
     }
 
     @Override
@@ -239,7 +238,7 @@ public class ClaudeService implements AIService, OpenAiService {
     @Override
     public Optional<Map<String, Object>> getServiceStatus() {
         Map<String, Object> status = new HashMap<>();
-        status.put("provider", "Claude");
+        status.put("provider", "OpenAI");
         status.put("connected", testConnection());
         return Optional.of(status);
     }
@@ -288,8 +287,8 @@ public class ClaudeService implements AIService, OpenAiService {
         return springMessages;
     }
     
-    private AnthropicChatOptions createOptions(double temperature, int maxTokens, String model) {
-        AnthropicChatOptions.Builder builder = AnthropicChatOptions.builder()
+    private OpenAiChatOptions createOptions(double temperature, int maxTokens, String model) {
+        OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder()
                 .withTemperature(temperature);
         
         if (maxTokens > 0) {

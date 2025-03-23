@@ -8,7 +8,7 @@ import java.util.Map;
  */
 public class AIServiceFactory {
     
-    private static final Map<String, AIService> serviceCache = new HashMap<>();
+    private static final Map<String, OpenAiService> serviceCache = new HashMap<>();
     
     /**
      * Create or retrieve an AI service based on provider type
@@ -16,9 +16,9 @@ public class AIServiceFactory {
      * @param providerType The type of AI provider
      * @param apiKey The API key for the provider
      * @param baseUrl The base URL for the provider API (optional for some providers)
-     * @return The appropriate AIService implementation
+     * @return The appropriate OpenAiService implementation
      */
-    public static AIService createService(String providerType, String apiKey, String baseUrl) {
+    public static OpenAiService createService(String providerType, String apiKey, String baseUrl) {
         ProviderType type = ProviderType.fromString(providerType);
         String cacheKey = type.name() + ":" + apiKey + ":" + baseUrl;
         
@@ -26,10 +26,10 @@ public class AIServiceFactory {
             return serviceCache.get(cacheKey);
         }
         
-        AIService service;
+        OpenAiService service;
         switch (type) {
             case OPENAI:
-                service = new OpenAIService(apiKey, baseUrl != null && !baseUrl.trim().isEmpty() ? baseUrl : "https://api.openai.com/");
+                service = new SpringOpenAiService(apiKey, baseUrl != null && !baseUrl.trim().isEmpty() ? baseUrl : "https://api.openai.com/");
                 break;
             case CLAUDE:
                 service = new ClaudeService(apiKey, baseUrl != null && !baseUrl.trim().isEmpty() ? baseUrl : "https://api.anthropic.com/");

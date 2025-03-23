@@ -5,18 +5,14 @@ import com.google.common.base.Strings;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
-import com.theokanning.openai.OpenAiHttpException;
-import com.theokanning.openai.client.OpenAiApi;
-import com.theokanning.openai.completion.chat.ChatCompletionRequest;
-import com.theokanning.openai.completion.chat.ChatMessage;
-import com.theokanning.openai.completion.chat.ChatMessageRole;
-import com.theokanning.openai.service.OpenAiService;
+import acute.ai.service.OpenAiHttpException;
+import acute.ai.service.ChatCompletionRequest;
+import acute.ai.service.ChatMessage;
+import acute.ai.service.ChatMessageRole;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import okhttp3.*;
-import okhttp3.Authenticator;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -28,27 +24,20 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import retrofit2.Retrofit;
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static com.theokanning.openai.service.OpenAiService.*;
 
 public final class CraftGPT extends JavaPlugin {
 
@@ -62,8 +51,7 @@ public final class CraftGPT extends JavaPlugin {
     public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
-    public OpenAiService openAIService;
-    public acute.ai.service.AIService aiService;
+    public acute.ai.service.OpenAiService openAIService;
 
     public static final Random random = new Random();
 
@@ -278,15 +266,12 @@ public final class CraftGPT extends JavaPlugin {
         
         try {
             // Create the appropriate AI service based on the provider
-            aiService = acute.ai.service.AIServiceFactory.createService(
+            openAIService = acute.ai.service.AIServiceFactory.createService(
                     aiProvider, 
                     key, 
                     // Use secondary param if available, otherwise use base-url
                     secondaryParam != null && !secondaryParam.trim().isEmpty() ? secondaryParam : baseUrl
             );
-            
-            // Create the adapter to make the AI service compatible with the OpenAiService interface
-            openAIService = new acute.ai.service.AIServiceAdapter(aiService);
             
             // Test the connection
             new BukkitRunnable() {

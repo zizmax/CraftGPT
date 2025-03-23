@@ -1,8 +1,6 @@
 package acute.ai;
 
-import com.theokanning.openai.OpenAiHttpException;
-import com.theokanning.openai.Usage;
-import com.theokanning.openai.completion.chat.*;
+import acute.ai.service.*;
 import io.reactivex.Flowable;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
