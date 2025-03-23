@@ -4,7 +4,7 @@ This document explains how to set up the Google Gemini integration for CraftGPT.
 
 ## Important Note for Windows Users
 
-When setting up on Windows, pay special attention to file paths:
+When setting up on Windows, pay special attention to file paths and environment:
 
 1. Use forward slashes in the configuration file:
    ```yaml
@@ -16,7 +16,14 @@ When setting up on Windows, pay special attention to file paths:
    gemini-credentials-path: "C:\\path\\to\\your\\credentials.json"
    ```
 
-3. Ensure the credentials file has proper read permissions for the user running the Minecraft server
+3. Set the GOOGLE_APPLICATION_CREDENTIALS environment variable before starting your server:
+   ```
+   set GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\your\credentials.json
+   ```
+   
+4. Make sure to use the same path format in both the config.yml and environment variable
+
+5. Ensure the credentials file has proper read permissions for the user running the Minecraft server
 
 ## Prerequisites
 
@@ -102,6 +109,14 @@ Try these solutions:
 - The service account needs "Vertex AI User" permissions
 - The user running the Minecraft server must have access to the credentials file
 - Try using absolute paths rather than relative paths
+
+**Important: For Windows, try setting the following environment variable before starting your server:**
+
+```
+set GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\your\credentials.json
+```
+
+Or add it to your system environment variables in Windows settings.
 
 #### 2. API Not Enabled
 If you see errors about the API not being enabled or not having permission:

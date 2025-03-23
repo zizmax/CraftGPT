@@ -487,6 +487,18 @@ public final class CraftGPT extends JavaPlugin {
                 }
             } catch (Exception e) {
                 getLogger().warning(String.format("[Try %s] Non-API error: " + e.getMessage(), i));
+                
+                // Special handling for Google credentials error
+                if (e.getMessage() != null && e.getMessage().contains("default credentials were not found")) {
+                    getLogger().severe("Google Cloud credentials error detected!");
+                    getLogger().severe("Make sure you've set up your credentials correctly.");
+                    getLogger().severe("Provider: " + providerType.getDisplayName());
+                    getLogger().severe("Credentials path from config: " + getConfig().getString("gemini-credentials-path"));
+                    getLogger().severe("Try setting GOOGLE_APPLICATION_CREDENTIALS environment variable before starting the server.");
+                    getLogger().severe("For Windows: set GOOGLE_APPLICATION_CREDENTIALS=C:\\path\\to\\credentials.json");
+                    getLogger().severe("See GEMINI_SETUP.md for more troubleshooting information.");
+                }
+                
                 if (!e.getMessage().contains("timeout")) {
                     e.printStackTrace();
                 }

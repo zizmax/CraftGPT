@@ -65,11 +65,12 @@ public class SpringGeminiService implements AIService {
                     GoogleCredentials credentials = GoogleCredentials.fromStream(new FileInputStream(apiKey));
                     System.out.println("Successfully loaded credentials from file");
                     
-                    // Create with explicit credentials
-                    com.google.cloud.vertexai.VertexAIOptions options = com.google.cloud.vertexai.VertexAIOptions.builder()
+                    // Create with explicit credentials using Builder pattern
+                    vertexAI = new VertexAI.Builder()
+                            .setProjectId(projectId)
+                            .setLocation(location)
                             .setCredentials(credentials)
                             .build();
-                    vertexAI = new VertexAI(projectId, location, options);
                     System.out.println("Successfully created VertexAI with explicit credentials");
                 } catch (IOException e2) {
                     System.err.println("Failed to load credentials from file: " + e2.getMessage());
