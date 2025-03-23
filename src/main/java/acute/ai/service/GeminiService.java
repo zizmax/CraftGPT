@@ -14,6 +14,10 @@ import java.util.function.Consumer;
 
 /**
  * Google Gemini implementation of AIService
+ * 
+ * This is a placeholder implementation until Spring AI is properly integrated.
+ * When Spring AI is fully available, this should be replaced with proper implementation
+ * using the Spring AI Vertex AI Gemini module.
  */
 public class GeminiService implements AIService, OpenAiService {
 
@@ -233,7 +237,7 @@ public class GeminiService implements AIService, OpenAiService {
     }
     
     /**
-     * A simple implementation of StreamingChatCompletionResponse
+     * A simple implementation of StreamingChatCompletionResponse for fallback
      */
     private static class SimpleStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
         private final String content;

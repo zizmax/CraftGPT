@@ -14,6 +14,10 @@ import java.util.function.Consumer;
 
 /**
  * Ollama implementation of AIService
+ * 
+ * This is a placeholder implementation until Spring AI is properly integrated.
+ * When Spring AI is fully available, this should be replaced with proper implementation
+ * using the Spring AI Ollama module.
  */
 public class OllamaService implements AIService, OpenAiService {
 
@@ -235,7 +239,7 @@ public class OllamaService implements AIService, OpenAiService {
     }
     
     /**
-     * A simple implementation of StreamingChatCompletionResponse
+     * A simple implementation of StreamingChatCompletionResponse for fallback
      */
     private static class SimpleStreamingChatCompletionResponse implements StreamingChatCompletionResponse {
         private final String content;
