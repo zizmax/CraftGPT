@@ -55,15 +55,6 @@ base-url: "https://api.openai.com/v1/"
 # - Ollama:    llama3, mistral, phi3
 model: "gpt-4o"
 
-proxy: # Supports HTTP proxies. Do not enable/configure unless your internet access blocks OpenAI.
-  enabled: false
-  host: "0.0.0.0"
-  port: 1000
-  authentication:
-    enabled: false
-    username: "user"
-    password: "pass"
-
 # In-game interaction settings
 interaction-radius: 30 # Setting this too high will cause lag!
 
