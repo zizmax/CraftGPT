@@ -15,6 +15,9 @@ public class AIServiceFactory {
      * @return An AIService implementation
      */
     public static AIService createService(ProviderType providerType, FileConfiguration config) {
+        // Configure proxy settings from config
+        configureProxy(config);
+        
         switch (providerType) {
             case OPENAI:
                 return createOpenAiService(config);
@@ -26,6 +29,45 @@ public class AIServiceFactory {
                 return createOllamaService(config);
             default:
                 throw new IllegalArgumentException("Unknown provider type: " + providerType);
+        }
+    }
+    
+    /**
+     * Configure proxy settings from config.yml by setting JVM system properties
+     * which will be used by LangChain4j's underlying HttpClient
+     */
+    private static void configureProxy(FileConfiguration config) {
+        // Check if proxy is enabled
+        if (config.getBoolean("proxy.enabled", false)) {
+            String proxyHost = config.getString("proxy.host");
+            int proxyPort = config.getInt("proxy.port");
+            
+            if (proxyHost != null && !proxyHost.isEmpty()) {
+                // Set HTTP proxy properties
+                System.setProperty("http.proxyHost", proxyHost);
+                System.setProperty("http.proxyPort", String.valueOf(proxyPort));
+                
+                // Also set HTTPS proxy properties (most API calls use HTTPS)
+                System.setProperty("https.proxyHost", proxyHost);
+                System.setProperty("https.proxyPort", String.valueOf(proxyPort));
+                
+                // Check if proxy authentication is enabled
+                if (config.getBoolean("proxy.authentication.enabled", false)) {
+                    String username = config.getString("proxy.authentication.username");
+                    String password = config.getString("proxy.authentication.password");
+                    
+                    if (username != null && !username.isEmpty() && password != null) {
+                        // Set proxy authentication properties
+                        System.setProperty("http.proxyUser", username);
+                        System.setProperty("http.proxyPassword", password);
+                        System.setProperty("https.proxyUser", username);
+                        System.setProperty("https.proxyPassword", password);
+                        
+                        // Enable auth schemes for tunneling (needed for HTTPS through proxy)
+                        System.setProperty("jdk.http.auth.tunneling.disabledSchemes", "");
+                    }
+                }
+            }
         }
     }
     
