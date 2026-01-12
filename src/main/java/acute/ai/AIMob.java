@@ -37,7 +37,7 @@ class AIMob {
     }
 
     private void buildBaseAIMob() {
-        this.messages = new ArrayList<>();
+        this.messages = java.util.Collections.synchronizedList(new ArrayList<>());
 
     }
 
@@ -128,15 +128,11 @@ class AIMob {
         message.addExtra(craftGPT.getClickableCommandHoverText(net.md_5.bungee.api.ChatColor.YELLOW.toString() + net.md_5.bungee.api.ChatColor.UNDERLINE + "[locate]", "/cg locate", net.md_5.bungee.api.ChatColor.GOLD + "Click me!"));
         player.spigot().sendMessage(message);
         player.sendMessage(CraftGPT.CHAT_PREFIX + "Click entity while sneaking to enable chat.");
-        entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
+        Bukkit.getScheduler().runTask(craftGPT, () -> {
+            entity.getWorld().spawnParticle(Particle.LAVA, entity.getLocation(), 10);
+            entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
+        });
         craftGPT.getLogger().info(player.getName() + " enabled AI for " + this.entityType + " named " + this.name + " at " + entity.getLocation());
-        Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
-            // Sounds can't be played async
-            @Override
-            public void run() {
-                entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
-            }
-        }, 1L);
     }
 
     public void buildConsoleCreatedAIMob() {
@@ -225,13 +221,9 @@ class AIMob {
         craftGPT.toggleWaitingOnAPI(entity);
 
         craftGPT.getLogger().info("Console enabled AI for " + this.entityType + " named " + this.name + " at " + entity.getLocation());
-        Bukkit.getScheduler().runTaskLater(craftGPT, new Runnable() {
-            // Sounds can't be played async
-            @Override
-            public void run() {
-                entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
-            }
-        }, 1L);
+        Bukkit.getScheduler().runTask(craftGPT, () -> {
+            entity.getWorld().playSound(entity.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 1f, 1f);
+        });
     }
 
     public void buildAutoSpawnAIMob() {

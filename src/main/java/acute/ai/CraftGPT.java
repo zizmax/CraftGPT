@@ -56,11 +56,11 @@ public final class CraftGPT extends JavaPlugin {
 
     public static final Random random = new Random();
 
-    public List<String> waitingOnAPIList = new ArrayList<>();
+    public Set<String> waitingOnAPIList = ConcurrentHashMap.newKeySet();
 
     ConcurrentHashMap<UUID, Entity> chattingPlayers = new ConcurrentHashMap<>();
 
-    ArrayList<UUID> debuggingPlayers = new ArrayList<>();
+    Set<UUID> debuggingPlayers = ConcurrentHashMap.newKeySet();
 
     ConcurrentHashMap<UUID, AIMob> selectingPlayers = new ConcurrentHashMap<>();
 
@@ -511,35 +511,35 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void renameMob(Entity entity) {
-        if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
-            entity.setCustomNameVisible(true);
-            if (isWaitingOnAPI(entity)) {
-                if (!craftGPTData.containsKey(entity.getUniqueId().toString())) {
-                    // Enabling mob (clock icon)
-                    entity.setCustomName("Enabling..." + ChatColor.YELLOW + " \u231A");
-                } else {
-                    // Waiting on API (clock icon)
-                    entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.YELLOW + " \u231A");
-                }
-
-            }
-            else {
-                if (chattingPlayers.containsValue(entity)) {
-                    // Currently chatting (green lightning bolt)
-                    entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.GREEN + " \u26A1");
-                    // star  "\u2B50"
-                }
-                else {
-                    if (isAIMob(entity)) {
-                        // AI-enabled (blue lightning bolt)
-                        entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.BLUE + " \u26A1");
+        Bukkit.getScheduler().runTask(this, () -> {
+            if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
+                entity.setCustomNameVisible(true);
+                if (isWaitingOnAPI(entity)) {
+                    if (!craftGPTData.containsKey(entity.getUniqueId().toString())) {
+                        // Enabling mob (clock icon)
+                        entity.setCustomName("Enabling..." + ChatColor.YELLOW + " \u231A");
                     } else {
-                        entity.setCustomName(null);
-                        entity.setCustomNameVisible(false);
+                        // Waiting on API (clock icon)
+                        entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.YELLOW + " \u231A");
+                    }
+
+                } else {
+                    if (chattingPlayers.containsValue(entity)) {
+                        // Currently chatting (green lightning bolt)
+                        entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.GREEN + " \u26A1");
+                        // star  "\u2B50"
+                    } else {
+                        if (isAIMob(entity)) {
+                            // AI-enabled (blue lightning bolt)
+                            entity.setCustomName(craftGPTData.get(entity.getUniqueId().toString()).getName() + ChatColor.BLUE + " \u26A1");
+                        } else {
+                            entity.setCustomName(null);
+                            entity.setCustomNameVisible(false);
+                        }
                     }
                 }
             }
-        }
+        });
     }
 
     public ChatMessage generateDefaultPrompt(AIMob aiMob) {
