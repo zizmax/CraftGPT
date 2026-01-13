@@ -30,8 +30,6 @@ permissions:
     description: Clear command
   craftgpt.name:
     description: Name command
-  craftgpt.temperature:
-    description: Temperature command
   craftgpt.backstory:
     description: Backstory command
   craftgpt.rawprompt:

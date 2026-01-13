@@ -35,7 +35,7 @@ public class Commands implements TabExecutor {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "temperature", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "auto-chat", "clearUsageFile", "locate", "tphere", "tpto");
+        List<String> commands = List.of("wand", "help", "stop", "info", "backstory", "rawprompt", "reload", "dryrun", "debug", "name", "remove", "create", "clearMobBuilder", "save", "displayname", "visibility", "prefix", "auto-chat", "clearUsageFile", "locate", "tphere", "tpto");
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
@@ -447,32 +447,6 @@ public class Commands implements TabExecutor {
                                     player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.no-mob-selected")));
                                 }
                             }
-                        } else if (args[0].equals("temperature")) {
-                            if (!player.hasPermission("craftgpt.temperature")) {
-                                sayNoPermission(player);
-                            } else {
-                                if (craftGPT.selectingPlayers.containsKey(player.getUniqueId())) {
-                                    if (!craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
-                                        if (args.length > 1) {
-                                            try {
-                                                Float temp = Float.parseFloat(args[1]);
-                                                craftGPT.selectingPlayers.get(player.getUniqueId()).setTemperature(temp);
-                                                player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.temperature.set")) + ChatColor.GOLD + temp);
-                                            } catch (NumberFormatException e) {
-                                                player.sendMessage(CraftGPT.CHAT_PREFIX + args[1] + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.temperature.not-set-number")));
-
-                                            }
-                                        } else {
-                                            player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.temperature.not-set.temp")));
-                                        }
-                                    } else {
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.ai-already-enabled")));
-                                    }
-
-                                } else {
-                                    player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.no-mob-selected")));
-                                }
-                            }
                         } else if (args[0].equals("backstory")) {
                             if (!player.hasPermission("craftgpt.backstory")) {
                                 sayNoPermission(player);
@@ -539,7 +513,6 @@ public class Commands implements TabExecutor {
                                     if (craftGPT.craftGPTData.containsKey(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString())) {
                                         AIMob aiMob = craftGPT.craftGPTData.get(craftGPT.selectingPlayers.get(player.getUniqueId()).getEntity().getUniqueId().toString());
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.info.name")) + ChatColor.GOLD + aiMob.getName());
-                                        player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.info.temp")) + ChatColor.GOLD + aiMob.getTemperature());
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.info.system-prompt")) + ChatColor.GOLD + aiMob.getMessages().get(0).getContent());
                                         player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.ai-not-enabled")));
                                     }
@@ -589,12 +562,6 @@ public class Commands implements TabExecutor {
                                             player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.dryrun.name")) + ChatColor.GOLD + selection.getName());
                                         } else {
                                             player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.dryrun.name")) + ChatColor.GOLD + ChatColor.MAGIC + "ChatGPT");
-                                        }
-                                        if (selection.getTemperature() != 0.0f) {
-                                            player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.dryrun.temp")) + ChatColor.GOLD + selection.getTemperature());
-                                        } else {
-                                            player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.dryrun.temp")) + ChatColor.GOLD + craftGPT.getConfig().getDouble("default-temperature"));
-
                                         }
                                         if (selection.getBackstory() == null && selection.getRawPrompt() == null) {
                                             player.sendMessage(CraftGPT.CHAT_PREFIX + ChatColor.translateAlternateColorCodes('&', craftGPT.getConfig().getString("messages.commands.api-connected.dryrun.backstory")) + ChatColor.GOLD + ChatColor.MAGIC + "ChatGPT");

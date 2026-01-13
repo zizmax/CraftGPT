@@ -834,7 +834,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
 
             ChatCompletionRequest completionRequest = ChatCompletionRequest.builder()
                     .messages(chatMessagesToSend)
-                    .temperature((double) aiMob.getTemperature())
                     .model(craftGPT.getConfig().getString("model"))
                     .build();
 
@@ -854,7 +853,6 @@ public class CraftGPTListener implements org.bukkit.event.Listener {
                             
                             chatCompletions = craftGPT.aiService.chatCompletion(
                                 messageList,
-                                completionRequest.getTemperature(),
                                 completionRequest.getModel()
                             );
                             Message responseMessage = chatCompletions.getChoices().get(0).getMessage();

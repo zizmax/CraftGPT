@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiChatRequestParameters;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.time.Duration;
@@ -22,12 +23,15 @@ public class LangChain4jOpenAiService implements AIService {
     private final String baseUrl;
     private final Integer timeout;
     private final String defaultModel;
+    private final String reasoningEffort;
     private final ProviderType providerType;
+    private boolean reasoningEffortSupported = true;
     
-    public LangChain4jOpenAiService(String apiKey, String baseUrl, Integer timeout, String modelName, ProviderType providerType) {
+    public LangChain4jOpenAiService(String apiKey, String baseUrl, Integer timeout, String modelName, String reasoningEffort, ProviderType providerType) {
         this.apiKey = apiKey;
         this.timeout = timeout;
         this.providerType = providerType;
+        this.reasoningEffort = reasoningEffort;
         
         // Use provided model name or fall back to a default
         this.defaultModel = (modelName != null && !modelName.isEmpty()) ? modelName : "gpt-4o";
@@ -36,9 +40,9 @@ public class LangChain4jOpenAiService implements AIService {
         this.baseUrl = formatBaseUrl(baseUrl, providerType);
         
         // Create the chat model
-        this.chatModel = createChatModel(0.7, 0, defaultModel);
+        this.chatModel = createChatModel(0, defaultModel, null);
     }
-    
+
     /**
      * Formats the base URL according to provider-specific requirements
      */
@@ -71,26 +75,63 @@ public class LangChain4jOpenAiService implements AIService {
             default -> false;
         };
     }
-    
+
     /**
      * Creates a properly configured OpenAiChatModel instance
      */
-    private OpenAiChatModel createChatModel(double temperature, int maxTokens, String modelName) {
-        return OpenAiChatModel.builder()
+    private OpenAiChatModel createChatModel(int maxTokens, String modelName, String reasoningEffortOverride) {
+        OpenAiChatModel.OpenAiChatModelBuilder builder = OpenAiChatModel.builder()
                 .apiKey(apiKey)
                 .baseUrl(baseUrl)
                 .modelName(modelName != null ? modelName : defaultModel)
-                .temperature(temperature)
-                .maxTokens(maxTokens > 0 ? maxTokens : null)
-                .timeout(Duration.ofSeconds(timeout))
-                .build();
+                .temperature(1.0)
+                .maxCompletionTokens(32000) // Hardcoded 32k tokens as temporary fix until deciding how to handle every model having a different supported max
+                .timeout(Duration.ofSeconds(timeout));
+
+        String effort = reasoningEffortOverride != null ? reasoningEffortOverride : this.reasoningEffort;
+        
+        if ("DISABLED".equals(effort) || "default".equalsIgnoreCase(effort)) {
+            effort = null;
+        }
+        
+        // Only apply reasoning_effort if supported and configured
+        if (reasoningEffortSupported && effort != null && !effort.isEmpty() && !effort.equalsIgnoreCase("null")) {
+            builder.defaultRequestParameters(OpenAiChatRequestParameters.builder()
+                    .reasoningEffort(effort)
+                    .build());
+        }
+
+        return builder.build();
     }
     
     @Override
-    public String simpleChatCompletion(String systemMessage, String userMessage, float temperature, int maxTokens) {
+    public List<String> runStartupDiagnostics() {
+        List<String> warnings = new ArrayList<>();
+        // If "default" or null is set, we don't need to stress test the parameter, but we DO need to test the connection.
+        // So we proceed to the test request regardless of reasoningEffort value.
+
+        try {
+            // Try a cheap request. This tests Auth, Connection, AND reasoning_effort (if set).
+            String response = simpleChatCompletion("You must only respond in Spanish no matter what", "Hello what's your name?", 100000);
+            System.out.println(response);
+        } catch (Exception e) {
+            // Check for unsupported parameter error
+            if (e.getMessage() != null && (e.getMessage().contains("Unsupported parameter") || e.getMessage().contains("reasoning_effort"))) {
+                reasoningEffortSupported = false;
+                warnings.add(String.format("INFO: The model '%s' may not support 'reasoning-effort' or the configured value '%s' is invalid. Disabling 'reasoning-effort' for this session to prevent errors. Set 'reasoning-effort' to a valid value or use 'default' to avoid this warning.", defaultModel, reasoningEffort));
+            } else {
+                // If it's another error (e.g. Auth), rethrow it as it's critical
+                throw convertException(e);
+            }
+        }
+        return warnings;
+    }
+    
+    @Override
+    public String simpleChatCompletion(String systemMessage, String userMessage, int maxTokens) {
         try {
             // Create our model with appropriate settings
-            OpenAiChatModel model = createChatModel(temperature, maxTokens, defaultModel);
+            OpenAiChatModel model = createChatModel(maxTokens, defaultModel, null);
             
             // Create messages
             List<dev.langchain4j.data.message.ChatMessage> messages = new ArrayList<>();
@@ -104,6 +145,10 @@ public class LangChain4jOpenAiService implements AIService {
             // Get response using specified messages
             ChatResponse response = model.chat(messages);
             
+            if (response.tokenUsage() != null) {
+                System.out.println("[CraftGPT-DEBUG] Token usage: " + response.tokenUsage());
+            }
+
             return response.aiMessage().text();
         } catch (Exception e) {
             throw convertException(e);
@@ -111,45 +156,53 @@ public class LangChain4jOpenAiService implements AIService {
     }
     
     @Override
-    public ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model) {
+    public ChatCompletionResponse chatCompletion(List<Message> messages, String model) {
         try {
             // Create our model with appropriate settings
-            OpenAiChatModel chatModel = createChatModel(temperature, 0, model);
+            OpenAiChatModel chatModel = createChatModel(0, model, null);
             
             // Convert our messages to LangChain4j messages
             List<dev.langchain4j.data.message.ChatMessage> langChainMessages = convertMessages(messages);
             
             // Get response from the model
             ChatResponse response = chatModel.chat(langChainMessages);
+
+            if (response.tokenUsage() != null) {
+                System.out.println("[CraftGPT-DEBUG] Token usage: " + response.tokenUsage());
+            }
             
-            // Build response from the response
-            String content = response.aiMessage().text();
-            
-            List<Choice> choices = new ArrayList<>();
-            choices.add(new Choice(
-                    new ChatMessage(ChatMessageRole.ASSISTANT.value(), content), 
-                    "stop", 
-                    0));
-            
-            // Get token usage if available
-            TokenUsage tokenUsage = response.tokenUsage();
-            long promptTokens = tokenUsage != null ? (tokenUsage.inputTokenCount() != null ? tokenUsage.inputTokenCount() : 0) : 0;
-            long completionTokens = tokenUsage != null ? (tokenUsage.outputTokenCount() != null ? tokenUsage.outputTokenCount() : 0) : 0;
-            long totalTokens = tokenUsage != null ? (tokenUsage.totalTokenCount() != null ? tokenUsage.totalTokenCount() : 0) : promptTokens + completionTokens;
-            
-            Usage usage = new Usage(promptTokens, completionTokens, totalTokens);
-            
-            return new ChatCompletionResponse(
-                    UUID.randomUUID().toString(),
-                    "chat.completion",
-                    System.currentTimeMillis() / 1000,
-                    model,
-                    choices,
-                    usage
-            );
+            return createResponse(response, model);
         } catch (Exception e) {
             throw convertException(e);
         }
+    }
+
+    private ChatCompletionResponse createResponse(ChatResponse response, String model) {
+        // Build response from the response
+        String content = response.aiMessage().text();
+
+        List<Choice> choices = new ArrayList<>();
+        choices.add(new Choice(
+                new ChatMessage(ChatMessageRole.ASSISTANT.value(), content),
+                "stop",
+                0));
+
+        // Get token usage if available
+        TokenUsage tokenUsage = response.tokenUsage();
+        long promptTokens = tokenUsage != null ? (tokenUsage.inputTokenCount() != null ? tokenUsage.inputTokenCount() : 0) : 0;
+        long completionTokens = tokenUsage != null ? (tokenUsage.outputTokenCount() != null ? tokenUsage.outputTokenCount() : 0) : 0;
+        long totalTokens = tokenUsage != null ? (tokenUsage.totalTokenCount() != null ? tokenUsage.totalTokenCount() : 0) : promptTokens + completionTokens;
+
+        Usage usage = new Usage(promptTokens, completionTokens, totalTokens);
+
+        return new ChatCompletionResponse(
+                UUID.randomUUID().toString(),
+                "chat.completion",
+                System.currentTimeMillis() / 1000,
+                model,
+                choices,
+                usage
+        );
     }
     
     private RuntimeException convertException(Exception e) {
@@ -248,27 +301,24 @@ public class LangChain4jOpenAiService implements AIService {
         
         return models;
     }
-    
+
     @Override
-    public boolean testConnection() {
+    public Optional<Map<String, Object>> getServiceStatus() {
+        boolean available = false;
         try {
             String response = simpleChatCompletion(
                     "You are a test system. Respond with 'OK' and nothing else.",
                     "Test connection",
-                    0.0f,
                     5);
-            return response != null && response.contains("OK");
+            available = response != null && response.contains("OK");
         } catch (Exception e) {
-            return false;
+            available = false;
         }
-    }
-    
-    @Override
-    public Optional<Map<String, Object>> getServiceStatus() {
+
         Map<String, Object> status = new HashMap<>();
         status.put("provider", providerType.getDisplayName() + " (LangChain4j)");
         status.put("model", defaultModel);
-        status.put("available", testConnection());
+        status.put("available", available);
         return Optional.of(status);
     }
 }

@@ -47,7 +47,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public String aiProvider = "OpenAI";
 
-    public boolean debug = false;
+    public boolean debug = true;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
     
@@ -214,13 +214,21 @@ public final class CraftGPT extends JavaPlugin {
         // Set the aiProvider display name
         aiProvider = providerType.getDisplayName();
         
-        // Test connection
-        apiConnected = aiService.testConnection();
-        
-        if (apiConnected) {
+        // Test connection and run diagnostics
+        try {
+            List<String> warnings = aiService.runStartupDiagnostics();
+            apiConnected = true;
             getLogger().info("Successfully connected to " + aiProvider);
-        } else {
+            
+            if (!warnings.isEmpty()) {
+                for (String warning : warnings) {
+                    getLogger().warning(warning);
+                }
+            }
+        } catch (Exception e) {
+            apiConnected = false;
             getLogger().warning("Failed to connect to " + aiProvider + ". Check your configuration.");
+            getLogger().warning("Error: " + e.getMessage());
         }
     }
 
@@ -299,15 +307,25 @@ public final class CraftGPT extends JavaPlugin {
                 public void run() {
                     long start = System.currentTimeMillis();
                     String baseUrl = getConfig().getString("base-url");
-                    getLogger().info("Connecting to " + aiProvider + " API (" + baseUrl + ")...");
-                    String response = tryNonChatRequest("Say hi", "Hi!", .1f, 2);
-                    if (response == null) {
-                        getLogger().severe("Tried 3 times and couldn't connect to " + aiProvider + " for the error(s) printed above!");
-                        getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
-                    } else {
+                    String model = getConfig().getString("model");
+                    getLogger().info("Connecting to " + aiProvider + " with " + model + " (" + baseUrl + ")...");
+                    
+                    try {
+                        List<String> warnings = aiService.runStartupDiagnostics();
                         long end = System.currentTimeMillis();
                         getLogger().info("Connected to " + aiProvider + "!" + " (" +  ((end-start) / 1000f) + "s)");
+                        
+                        if (!warnings.isEmpty()) {
+                            for (String warning : warnings) {
+                                getLogger().warning(warning);
+                            }
+                        }
+                        
                         apiConnected = true;
+                    } catch (Exception e) {
+                        getLogger().severe("Could not connect to " + aiProvider + "!");
+                        getLogger().severe("Error: " + e.getMessage());
+                        getLogger().severe("Read the error message carefully before asking for help in the Discord. Almost all errors are resolved by ensuring you have a valid and billable API key.");
                     }
                 }
             }.runTaskAsynchronously(this);
@@ -382,8 +400,25 @@ public final class CraftGPT extends JavaPlugin {
             getLogger().info("Read data.json!");
 
             return map;
-        } catch (IOException e) {
-            return null;
+        } catch (JsonSyntaxException | IOException e) {
+            getLogger().severe("Failed to read data.json! The file might be corrupted.");
+            getLogger().severe("Error: " + e.getMessage());
+            
+            try {
+                Path corruptedPath = Paths.get(craftGPT.getDataFolder() + "/data.json.corrupted-" + System.currentTimeMillis());
+                Files.move(path, corruptedPath, StandardCopyOption.REPLACE_EXISTING);
+                getLogger().severe("Renamed corrupted data.json to " + corruptedPath.getFileName());
+                
+                // Re-create empty data.json
+                Files.createFile(path);
+                Files.write(path, "{}".getBytes(StandardCharsets.UTF_8));
+                getLogger().severe("Created new empty data.json. Old data has been lost/moved.");
+            } catch (IOException ioException) {
+                getLogger().severe("Failed to rename corrupted data.json!");
+                ioException.printStackTrace();
+            }
+            
+            return new ConcurrentHashMap<>();
         }
     }
 
@@ -450,14 +485,18 @@ public final class CraftGPT extends JavaPlugin {
         else return false;
     }
 
-    public String tryNonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
+    public String tryNonChatRequest(String systemMessage, String userMessage, int maxTokens) {
         String errorSignature = null;
         String response;
 
         for (int i = 0; i < 3; i++) {
             try {
-                response = nonChatRequest(systemMessage, userMessage, temp, maxTokens);
-                return response;
+                response = nonChatRequest(systemMessage, userMessage, maxTokens);
+                if (response != null && !response.isBlank()) {
+                    return response;
+                } else {
+                    getLogger().warning(String.format("[Try %s] API returned empty response.", i));
+                }
             } catch (OpenAiHttpException e) {
                 if (errorSignature != null && errorSignature.equals(e.statusCode + e.type)) {
                     getLogger().warning("Failed again with identical error on try number " + (i+1) + ".");
@@ -475,9 +514,9 @@ public final class CraftGPT extends JavaPlugin {
         return null;
     }
 
-    public String nonChatRequest(String systemMessage, String userMessage, float temp, int maxTokens) {
+    public String nonChatRequest(String systemMessage, String userMessage, int maxTokens) {
         // Use the new AIService directly for simple requests
-        return aiService.simpleChatCompletion(systemMessage, userMessage, temp, maxTokens);
+        return aiService.simpleChatCompletion(systemMessage, userMessage, maxTokens);
     }
 
     public void printAPIErrorConsole(OpenAiHttpException e) {
@@ -551,7 +590,7 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void createAIMobData(AIMob aiMob, String uuid) {
-        if (debug) getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getTemperature() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
+        if (debug) getLogger().info("************************************\n" + aiMob.getName() + "\n" + aiMob.getMessages() + "\n" + aiMob.getBackstory());
         craftGPTData.put(uuid, aiMob);
         writeData(this);
     }

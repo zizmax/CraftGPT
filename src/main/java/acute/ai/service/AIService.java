@@ -9,27 +9,24 @@ import java.util.Optional;
  */
 public interface AIService {
     
-    /**
-     * Perform a simple chat completion with the AI service
-     * 
-     * @param systemMessage The system instructions
-     * @param userMessage The user prompt
-     * @param temperature The temperature parameter (creativity)
-     * @param maxTokens The maximum tokens to generate
-     * @return The AI response as a string
-     */
-    String simpleChatCompletion(String systemMessage, String userMessage, float temperature, int maxTokens);
+        /**
+         * Send a single message to the AI and get a response
+         *
+         * @param systemMessage The system prompt
+         * @param userMessage   The user message
+         * @param maxTokens     Max tokens to return
+         * @return The AI response
+         */
+        String simpleChatCompletion(String systemMessage, String userMessage, int maxTokens);
     
-    /**
-     * Perform a chat completion with a full message history
-     * 
-     * @param messages The list of messages in the conversation
-     * @param temperature The temperature parameter
-     * @param model The model to use for completion
-     * @return The response object containing the AI's reply
-     */
-    ChatCompletionResponse chatCompletion(List<Message> messages, double temperature, String model);
-    
+        /**
+         * Send a full chat history to the AI and get a response
+         *
+         * @param messages      List of messages
+         * @param model         The model to use
+         * @return The full chat completion response
+         */
+        ChatCompletionResponse chatCompletion(List<Message> messages, String model);    
     /**
      * Get the type of provider this service represents
      * 
@@ -43,13 +40,15 @@ public interface AIService {
      * @return Map of model IDs to display names
      */
     Map<String, String> getAvailableModels();
-    
+
     /**
-     * Test connection to the service
-     * 
-     * @return true if connection is successful
+     * Run startup diagnostics to check for configuration issues (e.g. incompatible parameters).
+     * Automatically adjusts the service configuration if possible.
+     *
+     * @return A list of warning messages to display to the user, or an empty list if healthy.
+     *         Throws RuntimeException on critical failure.
      */
-    boolean testConnection();
+    List<String> runStartupDiagnostics();
     
     /**
      * Get status information from the service

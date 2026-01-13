@@ -39,36 +39,40 @@ public class AIServiceFactory {
         String apiKey = config.getString("api-key", config.getString("api_key")); // Support both formats
         String baseUrl = config.getString("base-url");
         String model = config.getString("model");
+        String reasoningEffort = config.getString("reasoning-effort");
         Integer timeout = config.getInt("timeout", 30);
         
-        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.OPENAI);
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, reasoningEffort, ProviderType.OPENAI);
     }
     
     private static AIService createAnthropicService(FileConfiguration config) {
         String apiKey = config.getString("api-key", config.getString("api_key"));
         String baseUrl = config.getString("base-url");
         String model = config.getString("model");
+        String reasoningEffort = config.getString("reasoning-effort");
         Integer timeout = config.getInt("timeout", 30);
         
-        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.ANTHROPIC);
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, reasoningEffort, ProviderType.ANTHROPIC);
     }
     
     private static AIService createGeminiService(FileConfiguration config) {
         String apiKey = config.getString("api-key", config.getString("api_key"));
         String baseUrl = config.getString("base-url");
         String model = config.getString("model");
+        String reasoningEffort = config.getString("reasoning-effort");
         Integer timeout = config.getInt("timeout", 30);
         
-        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.GEMINI);
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, reasoningEffort, ProviderType.GEMINI);
     }
     
     private static AIService createOllamaService(FileConfiguration config) {
         String apiKey = config.getString("api-key", config.getString("api_key"));
         String baseUrl = config.getString("base-url");
         String model = config.getString("model");
+        String reasoningEffort = config.getString("reasoning-effort");
         Integer timeout = config.getInt("timeout", 30);
         
-        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, ProviderType.OLLAMA);
+        return new LangChain4jOpenAiService(apiKey, baseUrl, timeout, model, reasoningEffort, ProviderType.OLLAMA);
     }
     
     /**

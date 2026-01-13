@@ -15,9 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-class AIMob {
+public class AIMob {
     private transient CraftGPT craftGPT;
-    private float temperature;
     private Integer tokens;
     private String name;
     private transient Entity entity;
@@ -57,7 +56,7 @@ class AIMob {
                 userMessage = userMessage.replace("%NAME%", this.name);
             }
 
-            String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
+            String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 100000);
 
             if (response == null) {
                 craftGPT.printFailureToCreateMob(player, entity);
@@ -76,7 +75,7 @@ class AIMob {
             if (this.backstory != null) {
                 String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
                 userMessage = userMessage.replace("%BACKSTORY%", this.backstory);
-                this.name = craftGPT.tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
+                this.name = craftGPT.tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 100000);
             }
             if (this.rawPrompt != null) {
                 this.name = originalDisplayName;
@@ -155,7 +154,7 @@ class AIMob {
             }
 
 
-            String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
+            String response = craftGPT.tryNonChatRequest(systemMessage, userMessage, 100000);
 
             if (response == null) {
                 //craftGPT.printFailureToCreateMob(player, entity);
@@ -175,7 +174,7 @@ class AIMob {
             if (this.backstory != null) {
                 String userMessage = craftGPT.getConfig().getString("prompt.name-parser-prompt");
                 userMessage = userMessage.replace("%BACKSTORY%", this.backstory);
-                this.name = craftGPT.tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 1.0f, 20);
+                this.name = craftGPT.tryNonChatRequest(craftGPT.getConfig().getString("prompt.name-parser-system-prompt"), userMessage, 100000);
             }
 
             if (this.name == null) {
@@ -245,7 +244,7 @@ class AIMob {
             userMessage = userMessage.replace("%ENTITY_TYPE%", this.entityType);
             userMessage = userMessage.replace("%NAME%", this.name);
         }
-        String backstory = craftGPT.tryNonChatRequest(systemMessage, userMessage, 1.3f, 200);
+        String backstory = craftGPT.tryNonChatRequest(systemMessage, userMessage, 100000);
 
 
         if (backstory == null) {
@@ -261,7 +260,7 @@ class AIMob {
         this.backstory = backstory;
 
         // Generate name
-        String name = craftGPT.tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 1.0f, 20);
+        String name = craftGPT.tryNonChatRequest("You are pulling names from defined backstories. Only respond with the name from the personality description and nothing else. Do not include any other words except for the name.", "The backstory is: " + backstory + " and the name from the backstory is:", 100000);
 
         if (name == null) {
             craftGPT.getLogger().warning("Failed to auto-spawn AI mob due to OpenAI error.");
@@ -292,13 +291,6 @@ class AIMob {
 
     }
 
-    public Float getTemperature() {
-        return temperature;
-    }
-
-    public void setTemperature(Float temperature) {
-        this.temperature = temperature;
-    }
     public Integer getTokens() {
         return tokens;
     }

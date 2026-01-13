@@ -35,9 +35,8 @@ api-key: "API KEY HERE"
 # +----------------------------------------------------------------------------------------------+ #
 
 # AI API settings:
-default-temperature: 1.0
 messages-cutoff: 8 # How many messages are sent to the API per chat. Higher means longer "memories" and higher API usage
-timeout: 10 # Seconds before the HTTP connection times out and the request is retried
+timeout: 60 # Seconds before the HTTP connection times out and the request is retried
 
 # Base URL for the selected provider
 # Examples:
@@ -54,6 +53,11 @@ base-url: "https://api.openai.com/v1/"
 # - Google:    gemini-2.0-flash, gemini-1.5-pro
 # - Ollama:    llama3, mistral, phi3
 model: "gpt-4o"
+
+# Reasoning effort for reasoning models (o1, o3, etc.)
+# Valid values: low, medium, high
+# Leave blank to use the API default.
+reasoning-effort: "default"
 
 # In-game interaction settings
 interaction-radius: 30 # Setting this too high will cause lag!
@@ -356,10 +360,6 @@ messages:
       name:
         set: "Name set to: "
         not-set: "No name provided. Try again!"
-      temperature:
-        set: "Temperature set to: "
-        not-set-number: "is not a number"
-        not-set-temp: "No temperature provided. Try again!"
       backstory:
         null-prompt: "Can't provide a backstory with a raw prompt!"
         set: "Backstory set to: "
@@ -370,7 +370,6 @@ messages:
         not-set: "No prompt provided. Try again!"
       info:
         name: "Name: "
-        temp: "Temperature: "
         system-prompt: "System prompt: "
       clearUsageFile:
         success: "Usage file cleared and reloaded!"
@@ -382,7 +381,6 @@ messages:
         border: "+++++++++++++++++++++++++++++++++++++++++"
         selected: "Dry run for selected "
         name: "Name: "
-        temp: "Temperature: "
         backstory: "Backstory: "
         chatgpt: "ChatGPT"
         rawprompt: "Raw Prompt: "
