@@ -6,7 +6,7 @@
 
     <groupId>acute.ai</groupId>
     <artifactId>CraftGPT</artifactId>
-    <version>0.2.15</version>
+    <version>0.3.1</version>
     <packaging>jar</packaging>
 
     <name>CraftGPT</name>

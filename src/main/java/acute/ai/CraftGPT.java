@@ -47,7 +47,7 @@ public final class CraftGPT extends JavaPlugin {
 
     public String aiProvider = "OpenAI";
 
-    public boolean debug = true;
+    public boolean debug = false;
     public boolean apiKeySet = false;
     public boolean apiConnected = false;
     
@@ -397,6 +397,16 @@ public final class CraftGPT extends JavaPlugin {
 
 
             ConcurrentHashMap<String, AIMob> map = gson.fromJson(jsonReader, new TypeToken<ConcurrentHashMap<String, AIMob>>() {}.getType());
+            
+            // Ensure thread safety for loaded messages
+            if (map != null) {
+                for (AIMob mob : map.values()) {
+                    if (mob.getMessages() != null) {
+                        mob.setMessages(Collections.synchronizedList(new ArrayList<>(mob.getMessages())));
+                    }
+                }
+            }
+
             getLogger().info("Read data.json!");
 
             return map;
@@ -550,7 +560,7 @@ public final class CraftGPT extends JavaPlugin {
     }
 
     public void renameMob(Entity entity) {
-        Bukkit.getScheduler().runTask(this, () -> {
+        Runnable renameTask = () -> {
             if (!(entity instanceof Player) && !entity.hasMetadata("NPC")) {
                 entity.setCustomNameVisible(true);
                 if (isWaitingOnAPI(entity)) {
@@ -578,7 +588,13 @@ public final class CraftGPT extends JavaPlugin {
                     }
                 }
             }
-        });
+        };
+
+        if (Bukkit.isPrimaryThread()) {
+            renameTask.run();
+        } else if (isEnabled()) {
+            Bukkit.getScheduler().runTask(this, renameTask);
+        }
     }
 
     public ChatMessage generateDefaultPrompt(AIMob aiMob) {

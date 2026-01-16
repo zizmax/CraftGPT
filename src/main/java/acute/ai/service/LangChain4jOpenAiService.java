@@ -107,20 +107,14 @@ public class LangChain4jOpenAiService implements AIService {
     @Override
     public List<String> runStartupDiagnostics() {
         List<String> warnings = new ArrayList<>();
-        // If "default" or null is set, we don't need to stress test the parameter, but we DO need to test the connection.
-        // So we proceed to the test request regardless of reasoningEffort value.
 
         try {
-            // Try a cheap request. This tests Auth, Connection, AND reasoning_effort (if set).
-            String response = simpleChatCompletion("You must only respond in Spanish no matter what", "Hello what's your name?", 100000);
-            System.out.println(response);
+            String response = simpleChatCompletion("Just say hi", "Just say hi", 100000);
         } catch (Exception e) {
-            // Check for unsupported parameter error
             if (e.getMessage() != null && (e.getMessage().contains("Unsupported parameter") || e.getMessage().contains("reasoning_effort"))) {
                 reasoningEffortSupported = false;
                 warnings.add(String.format("INFO: The model '%s' may not support 'reasoning-effort' or the configured value '%s' is invalid. Disabling 'reasoning-effort' for this session to prevent errors. Set 'reasoning-effort' to a valid value or use 'default' to avoid this warning.", defaultModel, reasoningEffort));
             } else {
-                // If it's another error (e.g. Auth), rethrow it as it's critical
                 throw convertException(e);
             }
         }
@@ -130,10 +124,8 @@ public class LangChain4jOpenAiService implements AIService {
     @Override
     public String simpleChatCompletion(String systemMessage, String userMessage, int maxTokens) {
         try {
-            // Create our model with appropriate settings
             OpenAiChatModel model = createChatModel(maxTokens, defaultModel, null);
             
-            // Create messages
             List<dev.langchain4j.data.message.ChatMessage> messages = new ArrayList<>();
             
             if (systemMessage != null && !systemMessage.isEmpty()) {
@@ -142,12 +134,7 @@ public class LangChain4jOpenAiService implements AIService {
             
             messages.add(UserMessage.from(userMessage));
             
-            // Get response using specified messages
             ChatResponse response = model.chat(messages);
-            
-            if (response.tokenUsage() != null) {
-                System.out.println("[CraftGPT-DEBUG] Token usage: " + response.tokenUsage());
-            }
 
             return response.aiMessage().text();
         } catch (Exception e) {
@@ -158,18 +145,11 @@ public class LangChain4jOpenAiService implements AIService {
     @Override
     public ChatCompletionResponse chatCompletion(List<Message> messages, String model) {
         try {
-            // Create our model with appropriate settings
             OpenAiChatModel chatModel = createChatModel(0, model, null);
             
-            // Convert our messages to LangChain4j messages
             List<dev.langchain4j.data.message.ChatMessage> langChainMessages = convertMessages(messages);
             
-            // Get response from the model
             ChatResponse response = chatModel.chat(langChainMessages);
-
-            if (response.tokenUsage() != null) {
-                System.out.println("[CraftGPT-DEBUG] Token usage: " + response.tokenUsage());
-            }
             
             return createResponse(response, model);
         } catch (Exception e) {
@@ -178,7 +158,6 @@ public class LangChain4jOpenAiService implements AIService {
     }
 
     private ChatCompletionResponse createResponse(ChatResponse response, String model) {
-        // Build response from the response
         String content = response.aiMessage().text();
 
         List<Choice> choices = new ArrayList<>();
@@ -266,7 +245,6 @@ public class LangChain4jOpenAiService implements AIService {
     
     @Override
     public Map<String, String> getAvailableModels() {
-        // Return provider-specific models
         return getModelsForProvider(providerType);
     }
     
